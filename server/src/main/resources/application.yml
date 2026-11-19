@@ -5,3 +5,24 @@ spring:
     url: jdbc:postgresql://localhost:5432/zcollab
     username: zcollab
     password: ""
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+sa-token:
+  token-name: authToken
+  timeout: 7776000
+  active-timeout: -1
+  is-concurrent: true
+  is-share: false
+  max-login-count: 25
+  token-style: uuid
+  is-write-cookie: true
+  cookie:
+    http-only: true
+    same-site: Lax
+mybatis-plus:
+  global-config:
+    db-config:
+      id-type: assign_id
