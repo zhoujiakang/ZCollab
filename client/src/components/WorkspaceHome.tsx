@@ -1,33 +1,22 @@
 import { useState } from 'react';
-import { Badge, Button, Center, Container, Group, Loader, Paper, Select, Stack, Text, Title } from '@mantine/core';
+import { Button, Center, Container, Group, Paper, Select, Stack, Text, Title } from '@mantine/core';
 import type { MeUser } from '../api/auth';
-import type { Member, WorkspaceInfo, WorkspaceSummary } from '../api/workspace';
+import type { WorkspaceSummary } from '../api/workspace';
+import DocsPanel from './DocsPanel';
 import { pageStyle } from './pageStyle';
 
 interface WorkspaceHomeProps {
   user: MeUser;
   activeWorkspace: WorkspaceSummary;
-  info: WorkspaceInfo | null;
-  members: Member[];
-  loading: boolean;
   onSwitch: (id: string) => Promise<void>;
   onLogout: () => Promise<void>;
-  onNewWorkspace: () => void;
-}
-
-function roleLabel(role: string) {
-  return role === 'owner' ? '创建者' : role === 'member' ? '成员' : role;
 }
 
 export default function WorkspaceHome({
   user,
   activeWorkspace,
-  info,
-  members,
-  loading,
   onSwitch,
   onLogout,
-  onNewWorkspace,
 }: WorkspaceHomeProps) {
   const [busy, setBusy] = useState(false);
 
@@ -51,7 +40,7 @@ export default function WorkspaceHome({
 
   return (
     <Center mih="100vh" p="md" style={pageStyle}>
-      <Container size="md" p={0}>
+      <Container size="lg" p={0}>
         <Stack gap="lg">
           <Paper shadow="sm" p="md" radius="lg" withBorder>
             <Group justify="space-between" wrap="nowrap">
@@ -82,33 +71,7 @@ export default function WorkspaceHome({
             </Group>
           </Paper>
 
-          <Paper shadow="sm" p="lg" radius="lg" withBorder>
-            <Group justify="space-between" mb="md">
-              <Title order={4}>成员</Title>
-              <Text size="sm" c="dimmed">{info ? `${info.memberCount} 人` : ''}</Text>
-            </Group>
-            {loading ? (
-              <Center py="xl"><Loader color="teal" size="sm" /></Center>
-            ) : (
-              <Stack gap="xs">
-                {members.map((member) => (
-                  <Group key={member.id} justify="space-between">
-                    <Stack gap={0}>
-                      <Text fw={500}>{member.name}</Text>
-                      <Text size="xs" c="dimmed">@{member.username}</Text>
-                    </Stack>
-                    <Badge color={member.role === 'owner' ? 'teal' : 'gray'} variant="light">
-                      {roleLabel(member.role)}
-                    </Badge>
-                  </Group>
-                ))}
-              </Stack>
-            )}
-          </Paper>
-
-          <Button variant="light" color="teal" onClick={onNewWorkspace}>
-            新建工作区
-          </Button>
+          <DocsPanel workspaceId={activeWorkspace.id} />
         </Stack>
       </Container>
     </Center>

@@ -2,14 +2,7 @@ import { useEffect, useState } from 'react';
 import { Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { fetchMe, login, logout, register, type MeUser, type RegisteredUser } from './api/auth';
-import {
-  createWorkspace,
-  fetchMembers,
-  fetchWorkspaceInfo,
-  switchWorkspace,
-  type Member,
-  type WorkspaceInfo,
-} from './api/workspace';
+import { createWorkspace, switchWorkspace } from './api/workspace';
 import LoginCard from './components/LoginCard';
 import WorkspaceHome from './components/WorkspaceHome';
 import WorkspaceWizard from './components/WorkspaceWizard';
@@ -26,9 +19,6 @@ export default function App() {
   const [user, setUser] = useState<MeUser | null>(null);
   const [checking, setChecking] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
-  const [info, setInfo] = useState<WorkspaceInfo | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loadingWorkspace, setLoadingWorkspace] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -46,33 +36,6 @@ export default function App() {
       active = false;
     };
   }, []);
-
-  const activeWorkspaceId = user?.activeWorkspace?.id;
-  useEffect(() => {
-    if (!activeWorkspaceId) {
-      setInfo(null);
-      setMembers([]);
-      return;
-    }
-    let active = true;
-    setLoadingWorkspace(true);
-    Promise.all([fetchWorkspaceInfo(), fetchMembers()])
-      .then(([workspaceInfo, memberPage]) => {
-        if (active) {
-          setInfo(workspaceInfo);
-          setMembers(memberPage.items);
-        }
-      })
-      .catch((error) => {
-        if (active) notifyError(error);
-      })
-      .finally(() => {
-        if (active) setLoadingWorkspace(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [activeWorkspaceId]);
 
   const refreshMe = async () => {
     const me = await fetchMe();
@@ -131,8 +94,6 @@ export default function App() {
       await logout();
       setUser(null);
       setShowWizard(false);
-      setInfo(null);
-      setMembers([]);
       notifications.show({ color: 'blue', title: '已登出', message: '' });
     } catch (error) {
       notifyError(error);
@@ -160,12 +121,8 @@ export default function App() {
     <WorkspaceHome
       user={user}
       activeWorkspace={activeWorkspace}
-      info={info}
-      members={members}
-      loading={loadingWorkspace}
       onSwitch={handleSwitch}
       onLogout={handleLogout}
-      onNewWorkspace={() => setShowWizard(true)}
     />
   );
 }

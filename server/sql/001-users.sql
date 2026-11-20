@@ -4,12 +4,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
     name           varchar(255) NOT NULL,
     password       varchar(255) NOT NULL,
     avatar_url     varchar(512),
-    role           varchar(32),
     created_at     timestamptz NOT NULL DEFAULT now(),
-    updated_at     timestamptz NOT NULL DEFAULT now()
+    updated_at     timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT uk_sys_user_username UNIQUE (username)
 );
-
-DROP INDEX IF EXISTS uk_users_username_lower;
-DROP INDEX IF EXISTS uk_users_username;
-
-CREATE UNIQUE INDEX IF NOT EXISTS uk_sys_user_username ON sys_user (username);
