@@ -3,7 +3,6 @@ package com.zcollab.ws;
 import com.zcollab.core.protocol.Lib0Codec;
 import com.zcollab.core.protocol.SyncMessageType;
 import com.zcollab.core.store.DocStore;
-import com.zcollab.core.store.InMemoryDocStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -16,9 +15,8 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
-/** In-memory Yjs sync relay: one update log and one write lock per document. */
+/** Yjs sync relay backed by DocStore: one write lock per document. */
 @Service
 public class CollabSyncService {
 
@@ -41,13 +39,13 @@ public class CollabSyncService {
      */
     private static final byte[] EMPTY_STEP_1_MESSAGE = {0, 1, 0};
 
-    private final DocStore store = new InMemoryDocStore();
+    private final DocStore store;
     private final CollabRoomRegistry registry;
     private final ConcurrentHashMap<Long, Object> docLocks = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<Long, AtomicLong> nextSeq = new ConcurrentHashMap<>();
 
-    public CollabSyncService(CollabRoomRegistry registry) {
+    public CollabSyncService(CollabRoomRegistry registry, DocStore store) {
         this.registry = registry;
+        this.store = store;
     }
 
     /** 鉴权通过后服务端主动发 STEP_1，空状态向量让客户端回送它的完整状态。 */
@@ -100,13 +98,12 @@ public class CollabSyncService {
             }
             case STEP_2, UPDATE -> withDocLock(docId, () -> {
                 store.appendUpdate(docId, update);
-                long seq = nextSeq.computeIfAbsent(docId, ignored -> new AtomicLong(1)).getAndIncrement();
                 byte[] outgoing = syncFrame(SyncMessageType.UPDATE, update);
                 Set<WebSocketSession> peers = registry.peers(docId, self);
                 for (WebSocketSession peer : peers) {
                     send(peer, outgoing);
                 }
-                log.info("文档 {} 收到 {}，seq={}，以 UPDATE 转发给 {} 个连接", docId, subtype, seq, peers.size());
+                log.info("文档 {} 收到 {}，以 UPDATE 转发给 {} 个连接", docId, subtype, peers.size());
             });
         }
     }
