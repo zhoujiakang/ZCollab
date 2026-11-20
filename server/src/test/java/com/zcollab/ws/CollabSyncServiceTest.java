@@ -112,6 +112,38 @@ class CollabSyncServiceTest {
     }
 
     @Test
+    void joinSendsStep1ThenRoomAwarenessSnapshotOnlyToNewConnection() {
+        FakeSession a = new FakeSession("a");
+        FakeSession b = new FakeSession("b");
+        registry.register(DOC_ID, a);
+        registry.register(DOC_ID, b);
+        int clientA = (int) 3416484842L;
+        int clientB = 12345;
+        String stateA = "{\"user\":{\"name\":\"A\"}}";
+        String stateB = "{\"user\":{\"name\":\"B\"}}";
+        service.handleFrame(DOC_ID, awarenessFrame(clientA, 3, stateA), a);
+        service.handleFrame(DOC_ID, awarenessFrame(clientB, 4, stateB), b);
+        a.sent.clear();
+        b.sent.clear();
+
+        FakeSession newcomer = new FakeSession("newcomer");
+        registry.register(DOC_ID, newcomer);
+        service.onClientJoin(DOC_ID, newcomer);
+
+        assertEquals(2, newcomer.sent.size());
+        ByteBuffer step1 = ByteBuffer.wrap(newcomer.sent.get(0));
+        assertEquals(0, Lib0Codec.readVarUint(step1));
+        assertEquals(0, Lib0Codec.readVarUint(step1));
+        assertArrayEquals(new byte[]{0}, Lib0Codec.readVarUint8Array(step1));
+        List<AwarenessWire> snapshot = decodeAwareness(newcomer.sent.get(1));
+        assertEquals(2, snapshot.size());
+        assertTrue(snapshot.contains(new AwarenessWire(clientA, 3, stateA)));
+        assertTrue(snapshot.contains(new AwarenessWire(clientB, 4, stateB)));
+        assertTrue(a.sent.isEmpty());
+        assertTrue(b.sent.isEmpty());
+    }
+
+    @Test
     void closingSessionBroadcastsNullStateWithNextClockAndDropsRecord() {
         FakeSession a = new FakeSession("a");
         FakeSession b = new FakeSession("b");

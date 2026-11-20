@@ -62,11 +62,14 @@ public class CollabSyncService {
         this.store = store;
     }
 
-    /** 鉴权通过后服务端主动发 STEP_1，空状态向量让客户端回送它的完整状态。 */
+    /** 鉴权通过后服务端主动发 STEP_1，随后把房间内所有连接的 awareness 拼成一帧发给新连接。 */
     public void onClientJoin(long docId, WebSocketSession session) {
         withDocLock(docId, () -> {
             send(session, syncFrame(EMPTY_STEP_1_MESSAGE));
-            log.info("文档 {} 向新连接 {} 主动发送 step1", docId, session.getId());
+            List<AwarenessWireEntry> entries = roomAwarenessEntries(docId);
+            send(session, awarenessFrame(entries));
+            log.info("文档 {} 向新连接 {} 主动发送 step1 和 {} 条 awareness",
+                    docId, session.getId(), entries.size());
         });
     }
 

@@ -14,6 +14,10 @@ import {
 import { notifications } from '@mantine/notifications';
 import { EditorContent, useEditor, useEditorState, type Editor, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import Collaboration from '@tiptap/extension-collaboration';
+import { CollaborationCaret as CollaborationCursor } from '@tiptap/extension-collaboration-caret';
+import type { WebsocketProvider } from 'y-websocket';
+import type * as Y from 'yjs';
 import {
   createDoc,
   deleteDoc,
@@ -23,6 +27,8 @@ import {
   type Doc,
   type DocSummary,
 } from '../api/doc';
+import type { MeUser } from '../api/auth';
+import { useCollabDoc, type CollabStatus } from '../collab/useCollabDoc';
 
 interface TreeNode extends DocSummary {
   children: TreeNode[];
@@ -199,6 +205,29 @@ const editorStyles = `
 .zcollab-editor code { padding: 0.15em 0.35em; border-radius: 4px; background: var(--mantine-color-gray-1); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .zcollab-editor pre code { padding: 0; background: transparent; }
 .zcollab-editor hr { border: 0; border-top: 1px solid var(--mantine-color-gray-3); margin: 1.5em 0; }
+.zcollab-editor .collaboration-carets__caret {
+  position: relative;
+  margin-left: -1px;
+  margin-right: -1px;
+  border-left: 2px solid;
+  border-right: 2px solid;
+  pointer-events: none;
+  word-break: normal;
+}
+.zcollab-editor .collaboration-carets__label {
+  position: absolute;
+  top: -1.5em;
+  left: -1px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 3px 3px 3px 0;
+  user-select: none;
+  white-space: nowrap;
+}
 `;
 
 interface NodeRowProps {
@@ -246,8 +275,225 @@ function NodeRow({ node, depth, selectedId, onSelect, onDelete }: NodeRowProps) 
   );
 }
 
+const USER_COLORS = [
+  '#e03131', '#1971c2', '#2f9e44', '#f08c00', '#9c36b5', '#0c8599',
+  '#d6336c', '#5f3dc4', '#087f5b', '#e67700', '#1864ab', '#c2255c',
+];
+
+function colorFromUserId(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  }
+  return USER_COLORS[hash % USER_COLORS.length];
+}
+
+interface AwarenessUser {
+  clientId: number;
+  name: string;
+  color: string;
+}
+
+function OnlineUsers({ provider }: { provider: WebsocketProvider }) {
+  const [users, setUsers] = useState<AwarenessUser[]>([]);
+
+  useEffect(() => {
+    const refresh = () => {
+      const next: AwarenessUser[] = [];
+      provider.awareness.getStates().forEach((state, clientId) => {
+        const user = state?.user as { name?: string; color?: string } | undefined;
+        if (user?.name) {
+          next.push({ clientId, name: user.name, color: user.color ?? '#888888' });
+        }
+      });
+      setUsers(next);
+    };
+    refresh();
+    provider.awareness.on('change', refresh);
+    provider.awareness.on('update', refresh);
+    return () => {
+      provider.awareness.off('change', refresh);
+      provider.awareness.off('update', refresh);
+    };
+  }, [provider]);
+
+  return (
+    <Group gap={8} wrap="nowrap">
+      <Text size="sm" c="dimmed">在线 {users.length}</Text>
+      {users.map((user) => (
+        <Group key={user.clientId} gap={4} wrap="nowrap">
+          <Box w={8} h={8} style={{ borderRadius: '50%', background: user.color }} />
+          <Text size="sm" c="dimmed">{user.name}</Text>
+        </Group>
+      ))}
+    </Group>
+  );
+}
+
+interface CollabEditorProps {
+  docId: string;
+  user: Pick<MeUser, 'id' | 'name'>;
+  initialContent: string;
+  ydoc: Y.Doc;
+  provider: WebsocketProvider;
+  editorRef: { current: Editor | null };
+  onDirty: () => void;
+}
+
+/** 正文只由 Yjs 提供；连接状态变化不会走到这里重建 editor。 */
+function CollabEditor({
+  docId,
+  user,
+  initialContent,
+  ydoc,
+  provider,
+  editorRef,
+  onDirty,
+}: CollabEditorProps) {
+  const [focused, setFocused] = useState(false);
+  const initialContentRef = useRef(initialContent);
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({ undoRedo: false }),
+      Collaboration.configure({ document: ydoc, field: 'content' }),
+      CollaborationCursor.configure({
+        provider,
+        user: { name: user.name, color: colorFromUserId(user.id) },
+      }),
+    ],
+    editorProps: {
+      attributes: { class: 'zcollab-editor', 'aria-label': '文档正文' },
+    },
+    onUpdate: onDirty,
+  }, [ydoc, provider, docId]);
+
+  useEffect(() => {
+    editorRef.current = editor;
+    return () => {
+      if (editorRef.current === editor) editorRef.current = null;
+    };
+  }, [editor, editorRef]);
+
+  useEffect(() => {
+    const syncFocus = () => setFocused(editor.isFocused);
+    editor.on('focus', syncFocus);
+    editor.on('blur', syncFocus);
+    syncFocus();
+    return () => {
+      editor.off('focus', syncFocus);
+      editor.off('blur', syncFocus);
+    };
+  }, [editor]);
+
+  // 旧文档迁移：等同步后的 Yjs 更新安静下来再判断，避免把服务端快照认成空文档。
+  useEffect(() => {
+    let done = false;
+    let timer: number | null = null;
+    const scheduleMigration = () => {
+      if (done) return;
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        timer = null;
+        if (done) return;
+        done = true;
+        if (ydoc.getXmlFragment('content').length > 0) return;
+        const raw = initialContentRef.current;
+        if (!raw) return;
+        editor
+          .chain()
+          .setContent(parseDocContent(raw), { emitUpdate: false })
+          .command(({ tr }) => {
+            tr.setMeta('addToHistory', false);
+            return true;
+          })
+          .run();
+      }, 120);
+    };
+    const onDocUpdate = () => scheduleMigration();
+    const onSync = (synced: boolean) => {
+      if (synced) scheduleMigration();
+    };
+
+    ydoc.on('update', onDocUpdate);
+    provider.on('sync', onSync);
+    if (provider.synced) scheduleMigration();
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      ydoc.off('update', onDocUpdate);
+      provider.off('sync', onSync);
+    };
+  }, [editor, provider, ydoc]);
+
+  const toolbar = useEditorState({
+    editor,
+    selector: ({ editor: current }) => ({
+      canUndo: !!current?.can().undo(),
+      canRedo: !!current?.can().redo(),
+      bold: !!current?.isActive('bold'),
+      italic: !!current?.isActive('italic'),
+      strike: !!current?.isActive('strike'),
+      h1: !!current?.isActive('heading', { level: 1 }),
+      h2: !!current?.isActive('heading', { level: 2 }),
+      h3: !!current?.isActive('heading', { level: 3 }),
+      bulletList: !!current?.isActive('bulletList'),
+      orderedList: !!current?.isActive('orderedList'),
+      blockquote: !!current?.isActive('blockquote'),
+      codeBlock: !!current?.isActive('codeBlock'),
+      horizontalRule: !!current?.isActive('horizontalRule'),
+    }),
+  });
+
+  const toolbarItems: {
+    key: string;
+    label: string;
+    icon: ReactNode;
+    active: boolean;
+    unavailable?: boolean;
+    action: () => void;
+  }[] = [
+    { key: 'undo', label: '撤销', icon: <UndoIcon />, active: false, unavailable: !toolbar?.canUndo, action: () => editor.chain().focus().undo().run() },
+    { key: 'redo', label: '重做', icon: <RedoIcon />, active: false, unavailable: !toolbar?.canRedo, action: () => editor.chain().focus().redo().run() },
+    { key: 'bold', label: '加粗', icon: <Glyph style={{ fontWeight: 700 }}>B</Glyph>, active: !!toolbar?.bold, action: () => editor.chain().focus().toggleBold().run() },
+    { key: 'italic', label: '斜体', icon: <Glyph style={{ fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>I</Glyph>, active: !!toolbar?.italic, action: () => editor.chain().focus().toggleItalic().run() },
+    { key: 'strike', label: '删除线', icon: <Glyph style={{ fontWeight: 600, textDecoration: 'line-through' }}>S</Glyph>, active: !!toolbar?.strike, action: () => editor.chain().focus().toggleStrike().run() },
+    { key: 'h1', label: '一级标题', icon: <Glyph style={{ fontSize: 11, fontWeight: 700 }}>H1</Glyph>, active: !!toolbar?.h1, action: () => editor.chain().focus().toggleHeading({ level: 1 }).run() },
+    { key: 'h2', label: '二级标题', icon: <Glyph style={{ fontSize: 11, fontWeight: 700 }}>H2</Glyph>, active: !!toolbar?.h2, action: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
+    { key: 'h3', label: '三级标题', icon: <Glyph style={{ fontSize: 11, fontWeight: 700 }}>H3</Glyph>, active: !!toolbar?.h3, action: () => editor.chain().focus().toggleHeading({ level: 3 }).run() },
+    { key: 'bulletList', label: '无序列表', icon: <ListIcon ordered={false} />, active: !!toolbar?.bulletList, action: () => editor.chain().focus().toggleBulletList().run() },
+    { key: 'orderedList', label: '有序列表', icon: <ListIcon ordered />, active: !!toolbar?.orderedList, action: () => editor.chain().focus().toggleOrderedList().run() },
+    { key: 'blockquote', label: '引用', icon: <Glyph style={{ fontSize: 18 }}>❝</Glyph>, active: !!toolbar?.blockquote, action: () => editor.chain().focus().toggleBlockquote().run() },
+    { key: 'codeBlock', label: '代码块', icon: <CodeIcon />, active: !!toolbar?.codeBlock, action: () => editor.chain().focus().toggleCodeBlock().run() },
+    { key: 'horizontalRule', label: '分割线', icon: <RuleIcon />, active: false, action: () => editor.chain().focus().setHorizontalRule().run() },
+  ];
+
+  return (
+    <Stack gap="xs">
+      <Group gap={4} wrap="nowrap" style={{ overflowX: 'auto', paddingBottom: 4 }}>
+        {toolbarItems.map((item) => (
+          <ActionIcon
+            key={item.key}
+            size="compact-md"
+            variant={item.active ? 'filled' : 'subtle'}
+            color={item.active ? 'teal' : 'gray'}
+            disabled={!focused || item.unavailable}
+            title={item.label}
+            aria-label={item.label}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={item.action}
+          >
+            {item.icon}
+          </ActionIcon>
+        ))}
+      </Group>
+      <EditorContent editor={editor} />
+    </Stack>
+  );
+}
+
 interface DocsPanelProps {
   workspaceId: string;
+  user: Pick<MeUser, 'id' | 'name'>;
 }
 
 type SaveStatus = 'unsaved' | 'saving' | 'saved' | 'failed';
@@ -268,15 +514,27 @@ const SAVE_COLORS: Record<SaveStatus, string> = {
 
 const SAVE_DELAY = 1500;
 
-export default function DocsPanel({ workspaceId }: DocsPanelProps) {
+const CONNECTION_LABELS: Record<CollabStatus, string> = {
+  connecting: '协同连接中…',
+  connected: '协同已连接',
+  disconnected: '协同断开，重连中…',
+};
+
+const CONNECTION_COLORS: Record<CollabStatus, string> = {
+  connecting: 'orange',
+  connected: 'teal',
+  disconnected: 'red',
+};
+
+export default function DocsPanel({ workspaceId, user }: DocsPanelProps) {
   const [docs, setDocs] = useState<DocSummary[]>([]);
   const [selected, setSelected] = useState<Doc | null>(null);
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
-  const [focused, setFocused] = useState(false);
-  const [loadToken, setLoadToken] = useState(0);
+
+  const { ydoc, provider, status } = useCollabDoc(selected?.id ?? null);
 
   const titleRef = useRef('');
   const editorRef = useRef<Editor | null>(null);
@@ -299,16 +557,19 @@ export default function DocsPanel({ workspaceId }: DocsPanelProps) {
     [],
   );
 
-  const getPayload = useCallback(() => ({
-    title: titleRef.current,
-    content: editorRef.current ? JSON.stringify(editorRef.current.getJSON()) : '',
-  }), []);
+  const getPayload = useCallback(() => {
+    const payload: { title: string; content?: string } = { title: titleRef.current };
+    if (editorRef.current) {
+      payload.content = JSON.stringify(editorRef.current.getJSON());
+    }
+    return payload;
+  }, []);
 
   const performSave = useCallback((): Promise<void> => {
     if (inFlightRef.current) return inFlightRef.current;
     if (!dirtyRef.current) return Promise.resolve();
     const docId = docIdRef.current;
-    if (!docId || !editorRef.current) return Promise.resolve();
+    if (!docId) return Promise.resolve();
 
     dirtyRef.current = false;
     const payload = getPayload();
@@ -377,19 +638,6 @@ export default function DocsPanel({ workspaceId }: DocsPanelProps) {
     }
   }, [clearSaveTimer, performSave]);
 
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: parseDocContent(''),
-    editorProps: {
-      attributes: { class: 'zcollab-editor', 'aria-label': '文档正文' },
-    },
-    onUpdate: () => markDirty(),
-  });
-
-  useEffect(() => {
-    editorRef.current = editor;
-  }, [editor]);
-
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -408,25 +656,6 @@ export default function DocsPanel({ workspaceId }: DocsPanelProps) {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [flushNow]);
-
-  const toolbar = useEditorState({
-    editor,
-    selector: ({ editor: current }) => ({
-      canUndo: !!current?.can().undo(),
-      canRedo: !!current?.can().redo(),
-      bold: !!current?.isActive('bold'),
-      italic: !!current?.isActive('italic'),
-      strike: !!current?.isActive('strike'),
-      h1: !!current?.isActive('heading', { level: 1 }),
-      h2: !!current?.isActive('heading', { level: 2 }),
-      h3: !!current?.isActive('heading', { level: 3 }),
-      bulletList: !!current?.isActive('bulletList'),
-      orderedList: !!current?.isActive('orderedList'),
-      blockquote: !!current?.isActive('blockquote'),
-      codeBlock: !!current?.isActive('codeBlock'),
-      horizontalRule: !!current?.isActive('horizontalRule'),
-    }),
-  });
 
   useEffect(() => {
     let active = true;
@@ -454,34 +683,6 @@ export default function DocsPanel({ workspaceId }: DocsPanelProps) {
     };
   }, [workspaceId, clearSaveTimer]);
 
-  useEffect(() => {
-    if (!editor) return;
-    const syncFocus = () => setFocused(editor.isFocused);
-    editor.on('focus', syncFocus);
-    editor.on('blur', syncFocus);
-    syncFocus();
-    return () => {
-      editor.off('focus', syncFocus);
-      editor.off('blur', syncFocus);
-    };
-  }, [editor]);
-
-  useEffect(() => {
-    if (!editor || !selected) return;
-    editor
-      .chain()
-      .setContent(parseDocContent(selected.content), { emitUpdate: false })
-      .command(({ tr }) => {
-        tr.setMeta('addToHistory', false);
-        return true;
-      })
-      .run();
-    dirtyRef.current = false;
-    pendingRef.current = false;
-    // 仅在显式打开/新建文档时载入，保存后不重置光标与历史
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, loadToken]);
-
   const tree = useMemo(() => buildTree(docs), [docs]);
 
   const openDoc = (doc: Doc) => {
@@ -493,7 +694,6 @@ export default function DocsPanel({ workspaceId }: DocsPanelProps) {
     setSelected(doc);
     setTitle(doc.title);
     setSaveStatus('saved');
-    setLoadToken((value) => value + 1);
   };
 
   const selectDoc = (id: string) => {
@@ -542,29 +742,6 @@ export default function DocsPanel({ workspaceId }: DocsPanelProps) {
       .finally(() => setBusy(false));
   };
 
-  const toolbarItems: {
-    key: string;
-    label: string;
-    icon: ReactNode;
-    active: boolean;
-    unavailable?: boolean;
-    action: () => void;
-  }[] = [
-    { key: 'undo', label: '撤销', icon: <UndoIcon />, active: false, unavailable: !toolbar?.canUndo, action: () => editor?.chain().focus().undo().run() },
-    { key: 'redo', label: '重做', icon: <RedoIcon />, active: false, unavailable: !toolbar?.canRedo, action: () => editor?.chain().focus().redo().run() },
-    { key: 'bold', label: '加粗', icon: <Glyph style={{ fontWeight: 700 }}>B</Glyph>, active: !!toolbar?.bold, action: () => editor?.chain().focus().toggleBold().run() },
-    { key: 'italic', label: '斜体', icon: <Glyph style={{ fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>I</Glyph>, active: !!toolbar?.italic, action: () => editor?.chain().focus().toggleItalic().run() },
-    { key: 'strike', label: '删除线', icon: <Glyph style={{ fontWeight: 600, textDecoration: 'line-through' }}>S</Glyph>, active: !!toolbar?.strike, action: () => editor?.chain().focus().toggleStrike().run() },
-    { key: 'h1', label: '一级标题', icon: <Glyph style={{ fontSize: 11, fontWeight: 700 }}>H1</Glyph>, active: !!toolbar?.h1, action: () => editor?.chain().focus().toggleHeading({ level: 1 }).run() },
-    { key: 'h2', label: '二级标题', icon: <Glyph style={{ fontSize: 11, fontWeight: 700 }}>H2</Glyph>, active: !!toolbar?.h2, action: () => editor?.chain().focus().toggleHeading({ level: 2 }).run() },
-    { key: 'h3', label: '三级标题', icon: <Glyph style={{ fontSize: 11, fontWeight: 700 }}>H3</Glyph>, active: !!toolbar?.h3, action: () => editor?.chain().focus().toggleHeading({ level: 3 }).run() },
-    { key: 'bulletList', label: '无序列表', icon: <ListIcon ordered={false} />, active: !!toolbar?.bulletList, action: () => editor?.chain().focus().toggleBulletList().run() },
-    { key: 'orderedList', label: '有序列表', icon: <ListIcon ordered />, active: !!toolbar?.orderedList, action: () => editor?.chain().focus().toggleOrderedList().run() },
-    { key: 'blockquote', label: '引用', icon: <Glyph style={{ fontSize: 18 }}>❝</Glyph>, active: !!toolbar?.blockquote, action: () => editor?.chain().focus().toggleBlockquote().run() },
-    { key: 'codeBlock', label: '代码块', icon: <CodeIcon />, active: !!toolbar?.codeBlock, action: () => editor?.chain().focus().toggleCodeBlock().run() },
-    { key: 'horizontalRule', label: '分割线', icon: <RuleIcon />, active: false, action: () => editor?.chain().focus().setHorizontalRule().run() },
-  ];
-
   const renderNode = (node: TreeNode, depth: number) => (
     <Stack key={node.id} gap={0}>
       <NodeRow
@@ -603,7 +780,9 @@ export default function DocsPanel({ workspaceId }: DocsPanelProps) {
         <Box flex={1} p="lg" style={{ minHeight: 520 }}>
           {selected ? (
             <Stack gap="md" h="100%">
-              <Group justify="flex-end" gap="xs">
+              <Group justify="flex-end" gap="md" wrap="nowrap">
+                {provider && <OnlineUsers provider={provider} />}
+                <Text size="sm" c={CONNECTION_COLORS[status]}>{CONNECTION_LABELS[status]}</Text>
                 <Text size="sm" c={SAVE_COLORS[saveStatus]}>{SAVE_LABELS[saveStatus]}</Text>
               </Group>
               <TextInput
@@ -619,26 +798,20 @@ export default function DocsPanel({ workspaceId }: DocsPanelProps) {
                 }}
                 styles={{ input: { fontSize: 30, fontWeight: 600, padding: 0 } }}
               />
-              <Stack gap="xs">
-                <Group gap={4} wrap="nowrap" style={{ overflowX: 'auto', paddingBottom: 4 }}>
-                  {toolbarItems.map((item) => (
-                    <ActionIcon
-                      key={item.key}
-                      size="compact-md"
-                      variant={item.active ? 'filled' : 'subtle'}
-                      color={item.active ? 'teal' : 'gray'}
-                      disabled={!focused || item.unavailable}
-                      title={item.label}
-                      aria-label={item.label}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={item.action}
-                    >
-                      {item.icon}
-                    </ActionIcon>
-                  ))}
-                </Group>
-                <EditorContent editor={editor} />
-              </Stack>
+              {ydoc && provider ? (
+                <CollabEditor
+                  key={selected.id}
+                  docId={selected.id}
+                  user={user}
+                  initialContent={selected.content}
+                  ydoc={ydoc}
+                  provider={provider}
+                  editorRef={editorRef}
+                  onDirty={markDirty}
+                />
+              ) : (
+                <Center py={80}><Loader color="teal" size="sm" /></Center>
+              )}
             </Stack>
           ) : (
             <Center h="100%" mih={460}>

@@ -76,7 +76,7 @@ export default function WorkspaceHome({
             </Group>
           </Paper>
 
-          <DocsPanel workspaceId={activeWorkspace.id} />
+          <DocsPanel workspaceId={activeWorkspace.id} user={user} />
         </Stack>
       </Container>
     </Center>
