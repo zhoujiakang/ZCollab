@@ -89,11 +89,16 @@ public class CollabSyncService {
             case STEP_1 -> {
                 withDocLock(docId, () -> {
                     send(self, syncFrame(SyncMessageType.STEP_2, EMPTY_UPDATE));
+                    byte[] snapshot = store.readSnapshot(docId);
+                    if (snapshot != null) {
+                        send(self, syncFrame(SyncMessageType.UPDATE, snapshot));
+                    }
                     List<byte[]> stored = store.readUpdates(docId);
                     for (byte[] known : stored) {
                         send(self, syncFrame(SyncMessageType.UPDATE, known));
                     }
-                    log.info("文档 {} 收到 step1，回 step2 并重放 {} 条历史 update", docId, stored.size());
+                    log.info("文档 {} 收到 step1，回 step2，快照={}，并重放 {} 条增量 update",
+                            docId, snapshot != null, stored.size());
                 });
             }
             case STEP_2, UPDATE -> withDocLock(docId, () -> {

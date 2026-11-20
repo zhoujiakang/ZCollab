@@ -1,6 +1,7 @@
 package com.zcollab.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.zcollab.core.store.DocStore;
 import com.zcollab.dto.doc.CreateDocRequest;
 import com.zcollab.dto.doc.UpdateDocRequest;
 import com.zcollab.entity.Doc;
@@ -11,6 +12,7 @@ import com.zcollab.service.DocService;
 import com.zcollab.service.WorkspaceMemberService;
 import com.zcollab.vo.doc.DocResponse;
 import com.zcollab.vo.doc.DocSummaryResponse;
+import com.zcollab.ws.CollabRoomRegistry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,10 +24,15 @@ public class DocServiceImpl implements DocService {
 
     private final DocMapper docMapper;
     private final WorkspaceMemberService workspaceMemberService;
+    private final DocStore docStore;
+    private final CollabRoomRegistry roomRegistry;
 
-    public DocServiceImpl(DocMapper docMapper, WorkspaceMemberService workspaceMemberService) {
+    public DocServiceImpl(DocMapper docMapper, WorkspaceMemberService workspaceMemberService,
+                          DocStore docStore, CollabRoomRegistry roomRegistry) {
         this.docMapper = docMapper;
         this.workspaceMemberService = workspaceMemberService;
+        this.docStore = docStore;
+        this.roomRegistry = roomRegistry;
     }
 
     @Override
@@ -101,6 +108,16 @@ public class DocServiceImpl implements DocService {
                 .eq(Doc::getWorkspaceId, workspaceId)
                 .isNull(Doc::getDeletedAt)
                 .set(Doc::getDeletedAt, OffsetDateTime.now()));
+    }
+
+    @Override
+    public void compact(Long id, byte[] snapshot) {
+        requireDoc(id, currentWorkspaceId());
+        // 两人以上时，别人的 update 可能落在快照算完之后、事务提交之前被连带删掉。
+        if (roomRegistry.size(id) > 1) {
+            throw new BusinessException(ErrorCode.CONFLICT);
+        }
+        docStore.saveSnapshot(id, snapshot);
     }
 
     private Long currentWorkspaceId() {

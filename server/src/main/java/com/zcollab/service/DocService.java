@@ -18,4 +18,6 @@ public interface DocService {
     DocResponse update(UpdateDocRequest request);
 
     void delete(Long id);
+
+    void compact(Long id, byte[] snapshot);
 }

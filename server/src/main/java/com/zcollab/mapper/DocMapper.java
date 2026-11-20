@@ -2,9 +2,12 @@ package com.zcollab.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.zcollab.entity.Doc;
+import com.zcollab.vo.doc.DocSnapshotRow;
 import com.zcollab.vo.doc.DocSummaryRow;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.ResultType;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -30,4 +33,13 @@ public interface DocMapper extends BaseMapper<Doc> {
             SELECT id FROM descendants
             """)
     List<Long> selectDescendantIds(@Param("id") Long id, @Param("workspaceId") Long workspaceId);
+
+    @Select("SELECT snapshot, snapshot_seq FROM doc WHERE id = #{docId}")
+    @ResultType(DocSnapshotRow.class)
+    DocSnapshotRow selectSnapshot(@Param("docId") long docId);
+
+    @Update("UPDATE doc SET snapshot = #{snapshot}, snapshot_seq = #{snapshotSeq} WHERE id = #{docId}")
+    int updateSnapshot(@Param("docId") long docId,
+                       @Param("snapshot") byte[] snapshot,
+                       @Param("snapshotSeq") long snapshotSeq);
 }

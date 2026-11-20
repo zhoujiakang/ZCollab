@@ -2,7 +2,9 @@ package com.zcollab.store;
 
 import com.zcollab.core.store.DocStore;
 import com.zcollab.entity.DocUpdate;
+import com.zcollab.mapper.DocMapper;
 import com.zcollab.mapper.DocUpdateMapper;
+import com.zcollab.vo.doc.DocSnapshotRow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -18,21 +20,25 @@ public class PgDocStore implements DocStore {
 
     private static final Logger log = LoggerFactory.getLogger(PgDocStore.class);
 
-    private final DocUpdateMapper mapper;
+    private final DocUpdateMapper updateMapper;
+    private final DocMapper docMapper;
 
-    public PgDocStore(DocUpdateMapper mapper) {
-        this.mapper = mapper;
+    public PgDocStore(DocUpdateMapper updateMapper, DocMapper docMapper) {
+        this.updateMapper = updateMapper;
+        this.docMapper = docMapper;
     }
 
     @Override
     public byte[] readSnapshot(long docId) {
-        // 快照列下一步才加，当前没有可读的快照。
-        return null;
+        DocSnapshotRow row = docMapper.selectSnapshot(docId);
+        return row == null ? null : row.getSnapshot();
     }
 
     @Override
     public List<byte[]> readUpdates(long docId) {
-        return mapper.selectByDocIdOrderBySeq(docId).stream()
+        DocSnapshotRow row = docMapper.selectSnapshot(docId);
+        long snapshotSeq = row == null ? 0 : (row.getSnapshotSeq() == null ? 0 : row.getSnapshotSeq());
+        return updateMapper.selectByDocIdOrderBySeq(docId, snapshotSeq).stream()
                 .map(DocUpdate::getPayload)
                 .toList();
     }
@@ -41,17 +47,23 @@ public class PgDocStore implements DocStore {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void appendUpdate(long docId, byte[] update) {
         Objects.requireNonNull(update, "update");
-        long seq = mapper.selectNextSeq(docId);
+        long seq = updateMapper.selectNextSeq(docId);
         DocUpdate row = new DocUpdate();
         row.setDocId(docId);
         row.setSeq(seq);
         row.setPayload(update);
-        mapper.insert(row);
+        updateMapper.insert(row);
         log.info("文档 {} 追加 update，seq={}，字节数={}", docId, seq, update.length);
     }
 
     @Override
+    @Transactional
     public void saveSnapshot(long docId, byte[] snapshot) {
-        // 下一步接快照列，当前留空实现。
+        Objects.requireNonNull(snapshot, "snapshot");
+        // nextSeq - 1 == greatest(当前最大 seq, snapshot_seq)，收缩后再次收缩也不会把序号倒退。
+        long coveredSeq = updateMapper.selectNextSeq(docId) - 1;
+        docMapper.updateSnapshot(docId, snapshot, coveredSeq);
+        updateMapper.deleteByDocIdAndSeqLessThanEqual(docId, coveredSeq);
+        log.info("文档 {} 保存快照，覆盖到 seq={}，字节数={}", docId, coveredSeq, snapshot.length);
     }
 }
