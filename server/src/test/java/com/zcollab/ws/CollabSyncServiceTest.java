@@ -203,6 +203,52 @@ class CollabSyncServiceTest {
         assertArrayEquals(update, Lib0Codec.readVarUint8Array(in));
     }
 
+    @Test
+    void step1ReplyCarriesSnapshotInStep2ThenReplaysOnlyUpdatesAfterSnapshot() {
+        byte[] snapshot = {9, 8, 7};
+        byte[] delta1 = {1, 1};
+        byte[] delta2 = {2, 2};
+        store.saveSnapshot(DOC_ID, snapshot);
+        store.appendUpdate(DOC_ID, delta1);
+        store.appendUpdate(DOC_ID, delta2);
+        FakeSession client = new FakeSession("client");
+
+        service.handleFrame(DOC_ID, step1Frame(), client);
+
+        assertEquals(3, client.sent.size());
+        assertSyncFrame(client.sent.get(0), 1, snapshot);
+        assertSyncFrame(client.sent.get(1), 2, delta1);
+        assertSyncFrame(client.sent.get(2), 2, delta2);
+    }
+
+    @Test
+    void step1ReplyWithoutSnapshotUsesEmptyStep2Payload() {
+        byte[] delta = {3, 4};
+        store.appendUpdate(DOC_ID, delta);
+        FakeSession client = new FakeSession("client");
+
+        service.handleFrame(DOC_ID, step1Frame(), client);
+
+        assertEquals(2, client.sent.size());
+        assertSyncFrame(client.sent.get(0), 1, new byte[]{0, 0});
+        assertSyncFrame(client.sent.get(1), 2, delta);
+    }
+
+    private static byte[] step1Frame() {
+        ByteArrayOutputStream frame = new ByteArrayOutputStream();
+        Lib0Codec.writeVarUint(frame, 0);
+        Lib0Codec.writeVarUint(frame, 0);
+        Lib0Codec.writeVarUint8Array(frame, new byte[]{0});
+        return frame.toByteArray();
+    }
+
+    private static void assertSyncFrame(byte[] frame, int expectedSubtype, byte[] expectedUpdate) {
+        ByteBuffer in = ByteBuffer.wrap(frame);
+        assertEquals(0, Lib0Codec.readVarUint(in));
+        assertEquals(expectedSubtype, Lib0Codec.readVarUint(in));
+        assertArrayEquals(expectedUpdate, Lib0Codec.readVarUint8Array(in));
+    }
+
     private static byte[] awarenessFrame(int clientId, int clock, String stateJson) {
         ByteArrayOutputStream body = new ByteArrayOutputStream();
         Lib0Codec.writeVarUint(body, 1);

@@ -386,41 +386,29 @@ function CollabEditor({
     };
   }, [editor]);
 
-  // 旧文档迁移：等同步后的 Yjs 更新安静下来再判断，避免把服务端快照认成空文档。
+  // 旧文档迁移：sync 时服务端状态已应用完，空 fragment 才说明这是未协同过的老文档。
+  const migrationDoneRef = useRef(false);
   useEffect(() => {
-    let done = false;
-    let timer: number | null = null;
-    const scheduleMigration = () => {
-      if (done) return;
-      if (timer !== null) window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        timer = null;
-        if (done) return;
-        done = true;
-        if (ydoc.getXmlFragment('content').length > 0) return;
-        const raw = initialContentRef.current;
-        if (!raw) return;
-        editor
-          .chain()
-          .setContent(parseDocContent(raw), { emitUpdate: false })
-          .command(({ tr }) => {
-            tr.setMeta('addToHistory', false);
-            return true;
-          })
-          .run();
-      }, 120);
+    const migrateOnce = (synced: boolean) => {
+      if (!synced || migrationDoneRef.current) return;
+      migrationDoneRef.current = true;
+      if (ydoc.getXmlFragment('content').length !== 0) return;
+      const raw = initialContentRef.current;
+      if (!raw) return;
+      editor
+        .chain()
+        .setContent(parseDocContent(raw), { emitUpdate: false })
+        .command(({ tr }) => {
+          tr.setMeta('addToHistory', false);
+          return true;
+        })
+        .run();
     };
-    const onDocUpdate = () => scheduleMigration();
-    const onSync = (synced: boolean) => {
-      if (synced) scheduleMigration();
-    };
+    const onSync = (synced: boolean) => migrateOnce(synced);
 
-    ydoc.on('update', onDocUpdate);
     provider.on('sync', onSync);
-    if (provider.synced) scheduleMigration();
+    if (provider.synced) migrateOnce(true);
     return () => {
-      if (timer !== null) window.clearTimeout(timer);
-      ydoc.off('update', onDocUpdate);
       provider.off('sync', onSync);
     };
   }, [editor, provider, ydoc]);
