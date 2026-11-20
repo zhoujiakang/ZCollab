@@ -45,6 +45,11 @@ public class DocController {
         return ApiResponse.ok(docService.get(request.getId()));
     }
 
+    @PostMapping("/claim-seed")
+    public ApiResponse<Boolean> claimSeed(@RequestBody @Valid GetDocRequest request) {
+        return ApiResponse.ok(docService.claimSeed(request.getId()));
+    }
+
     @PostMapping("/update")
     public ApiResponse<DocResponse> update(@RequestBody @Valid UpdateDocRequest request) {
         return ApiResponse.ok(docService.update(request));

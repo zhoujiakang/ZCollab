@@ -108,6 +108,10 @@ public class CollabSyncService {
             log.warn("文档 {} 收到非法同步帧，丢弃：{}", docId, e.getMessage());
             return;
         }
+        if (isEmptyUpdate(update)) {
+            log.info("文档 {} 收到空 update，忽略", docId);
+            return;
+        }
 
         switch (subtype) {
             case STEP_1 -> {
@@ -133,6 +137,10 @@ public class CollabSyncService {
                 log.info("文档 {} 收到 {}，以 UPDATE 转发给 {} 个连接", docId, subtype, peers.size());
             });
         }
+    }
+
+    private static boolean isEmptyUpdate(byte[] update) {
+        return update.length == 0 || (update.length == 2 && update[0] == 0 && update[1] == 0);
     }
 
     private void handleAwareness(long docId, ByteBuffer in, byte[] rawFrame, WebSocketSession self) {

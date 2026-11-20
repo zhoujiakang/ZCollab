@@ -25,6 +25,10 @@ export function getDoc(id: string): Promise<Doc> {
   return apiPost<Doc>('/doc/get', { id });
 }
 
+export function claimSeedDoc(id: string): Promise<boolean> {
+  return apiPost<boolean>('/doc/claim-seed', { id });
+}
+
 export function updateDoc(id: string, values: { title?: string; content?: string }): Promise<Doc> {
   return apiPost<Doc>('/doc/update', { id, ...values });
 }

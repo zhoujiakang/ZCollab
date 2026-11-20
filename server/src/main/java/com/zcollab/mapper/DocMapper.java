@@ -42,4 +42,16 @@ public interface DocMapper extends BaseMapper<Doc> {
     int updateSnapshot(@Param("docId") long docId,
                        @Param("snapshot") byte[] snapshot,
                        @Param("snapshotSeq") long snapshotSeq);
+
+    @Select("""
+            WITH claimed AS (
+                UPDATE doc SET seed_claimed_at = now()
+                WHERE id = #{id} AND deleted_at IS NULL AND snapshot_seq = 0
+                  AND NOT EXISTS (SELECT 1 FROM doc_update WHERE doc_id = #{id})
+                  AND (seed_claimed_at IS NULL OR seed_claimed_at < now() - interval '60 seconds')
+                RETURNING id
+            )
+            SELECT COUNT(*) FROM claimed
+            """)
+    int claimSeed(@Param("id") Long id);
 }

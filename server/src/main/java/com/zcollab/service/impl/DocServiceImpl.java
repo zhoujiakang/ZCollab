@@ -65,6 +65,12 @@ public class DocServiceImpl implements DocService {
     }
 
     @Override
+    public boolean claimSeed(Long id) {
+        requireDoc(id, currentWorkspaceId());
+        return docMapper.claimSeed(id) > 0;
+    }
+
+    @Override
     @Transactional
     public DocResponse update(UpdateDocRequest request) {
         Long workspaceId = currentWorkspaceId();

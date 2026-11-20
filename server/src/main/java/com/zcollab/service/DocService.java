@@ -15,6 +15,8 @@ public interface DocService {
 
     DocResponse get(Long id);
 
+    boolean claimSeed(Long id);
+
     DocResponse update(UpdateDocRequest request);
 
     void delete(Long id);

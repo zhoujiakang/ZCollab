@@ -19,6 +19,7 @@ import { CollaborationCaret as CollaborationCursor } from '@tiptap/extension-col
 import type { WebsocketProvider } from 'y-websocket';
 import type * as Y from 'yjs';
 import {
+  claimSeedDoc,
   createDoc,
   deleteDoc,
   getDoc,
@@ -103,6 +104,11 @@ function parseDocContent(raw: string): JSONContent {
       },
     ],
   };
+}
+
+function hasDocContent(node: JSONContent): boolean {
+  if (typeof node.text === 'string') return node.text.trim().length > 0;
+  return (node.content ?? []).some(hasDocContent);
 }
 
 const iconProps = {
@@ -386,32 +392,77 @@ function CollabEditor({
     };
   }, [editor]);
 
-  // 旧文档迁移：sync 时服务端状态已应用完，空 fragment 才说明这是未协同过的老文档。
+  // 旧文档迁移：只有服务端原子认领成功的一端负责把 doc.content 灌进 Yjs。
+  const [waitingForSeed, setWaitingForSeed] = useState(false);
   const migrationDoneRef = useRef(false);
   useEffect(() => {
-    const migrateOnce = (synced: boolean) => {
+    let cancelled = false;
+    let waitTimer: ReturnType<typeof setTimeout> | undefined;
+    const fragment = ydoc.getXmlFragment('content');
+
+    const clearWaiting = () => {
+      if (waitTimer !== undefined) {
+        clearTimeout(waitTimer);
+        waitTimer = undefined;
+      }
+      if (!cancelled) setWaitingForSeed(false);
+    };
+    const onFragmentChange = () => {
+      if (fragment.length > 0) clearWaiting();
+    };
+    fragment.observeDeep(onFragmentChange);
+
+    const migrateOnce = async (synced: boolean) => {
       if (!synced || migrationDoneRef.current) return;
       migrationDoneRef.current = true;
-      if (ydoc.getXmlFragment('content').length !== 0) return;
+      if (fragment.length !== 0) return;
       const raw = initialContentRef.current;
       if (!raw) return;
+      const parsed = parseDocContent(raw);
+      if (!hasDocContent(parsed)) return;
+
+      let seeded = false;
+      try {
+        seeded = await claimSeedDoc(docId);
+      } catch {
+        seeded = false;
+      }
+      if (cancelled) return;
+
+      if (!seeded) {
+        setWaitingForSeed(true);
+        if (fragment.length > 0) {
+          clearWaiting();
+          return;
+        }
+        waitTimer = setTimeout(() => {
+          waitTimer = undefined;
+          if (!cancelled) setWaitingForSeed(false);
+        }, 5000);
+        return;
+      }
+      if (fragment.length !== 0) return;
+
       editor
         .chain()
-        .setContent(parseDocContent(raw), { emitUpdate: false })
+        .setContent(parsed, { emitUpdate: false })
         .command(({ tr }) => {
           tr.setMeta('addToHistory', false);
           return true;
         })
         .run();
     };
-    const onSync = (synced: boolean) => migrateOnce(synced);
+    const onSync = (synced: boolean) => void migrateOnce(synced);
 
     provider.on('sync', onSync);
-    if (provider.synced) migrateOnce(true);
+    if (provider.synced) void migrateOnce(true);
     return () => {
+      cancelled = true;
+      if (waitTimer !== undefined) clearTimeout(waitTimer);
+      fragment.unobserveDeep(onFragmentChange);
       provider.off('sync', onSync);
     };
-  }, [editor, provider, ydoc]);
+  }, [docId, editor, provider, ydoc]);
 
   const toolbar = useEditorState({
     editor,
@@ -474,6 +525,7 @@ function CollabEditor({
           </ActionIcon>
         ))}
       </Group>
+      {waitingForSeed && <Text size="sm" c="dimmed">正在同步内容</Text>}
       <EditorContent editor={editor} />
     </Stack>
   );

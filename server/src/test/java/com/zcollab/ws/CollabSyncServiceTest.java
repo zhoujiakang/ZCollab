@@ -204,6 +204,19 @@ class CollabSyncServiceTest {
     }
 
     @Test
+    void emptyClientStep2IsIgnoredWithoutPersistingOrForwarding() {
+        FakeSession a = new FakeSession("a");
+        FakeSession b = new FakeSession("b");
+        registry.register(DOC_ID, a);
+        registry.register(DOC_ID, b);
+
+        service.handleFrame(DOC_ID, syncFrame(1, new byte[]{0, 0}), a);
+
+        assertTrue(store.readUpdates(DOC_ID).isEmpty());
+        assertTrue(b.sent.isEmpty());
+    }
+
+    @Test
     void step1ReplyCarriesSnapshotInStep2ThenReplaysOnlyUpdatesAfterSnapshot() {
         byte[] snapshot = {9, 8, 7};
         byte[] delta1 = {1, 1};
@@ -239,6 +252,14 @@ class CollabSyncServiceTest {
         Lib0Codec.writeVarUint(frame, 0);
         Lib0Codec.writeVarUint(frame, 0);
         Lib0Codec.writeVarUint8Array(frame, new byte[]{0});
+        return frame.toByteArray();
+    }
+
+    private static byte[] syncFrame(int subtype, byte[] update) {
+        ByteArrayOutputStream frame = new ByteArrayOutputStream();
+        Lib0Codec.writeVarUint(frame, 0);
+        Lib0Codec.writeVarUint(frame, subtype);
+        Lib0Codec.writeVarUint8Array(frame, update);
         return frame.toByteArray();
     }
 
