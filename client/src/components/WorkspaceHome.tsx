@@ -10,6 +10,7 @@ interface WorkspaceHomeProps {
   activeWorkspace: WorkspaceSummary;
   onSwitch: (id: string) => Promise<void>;
   onLogout: () => Promise<void>;
+  onNewWorkspace: () => void;
 }
 
 export default function WorkspaceHome({
@@ -17,6 +18,7 @@ export default function WorkspaceHome({
   activeWorkspace,
   onSwitch,
   onLogout,
+  onNewWorkspace,
 }: WorkspaceHomeProps) {
   const [busy, setBusy] = useState(false);
 
@@ -64,6 +66,9 @@ export default function WorkspaceHome({
               </Group>
               <Group gap="sm" wrap="nowrap">
                 <Text size="sm">{user.name}</Text>
+                <Button variant="light" size="compact-sm" color="teal" onClick={onNewWorkspace}>
+                  新建工作区
+                </Button>
                 <Button variant="subtle" size="compact-sm" color="teal" loading={busy} onClick={handleLogout}>
                   登出
                 </Button>

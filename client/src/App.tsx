@@ -123,6 +123,7 @@ export default function App() {
       activeWorkspace={activeWorkspace}
       onSwitch={handleSwitch}
       onLogout={handleLogout}
+      onNewWorkspace={() => setShowWizard(true)}
     />
   );
 }
