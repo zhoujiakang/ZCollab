@@ -1,9 +1,12 @@
 package com.zcollab.controller;
 
 import com.zcollab.common.ApiResponse;
-import com.zcollab.vo.CurrentUser;
-import com.zcollab.service.AuthService;
+import com.zcollab.dto.common.PageRequest;
+import com.zcollab.service.UserService;
+import com.zcollab.vo.user.CurrentUserResponse;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -11,14 +14,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/users")
 public class UserController {
 
-    private final AuthService authService;
+    private final UserService userService;
 
-    public UserController(AuthService authService) {
-        this.authService = authService;
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
     @PostMapping("/me")
-    public ApiResponse<CurrentUser> me() {
-        return ApiResponse.ok(authService.me());
+    public ApiResponse<CurrentUserResponse> me(@RequestBody(required = false) @Valid PageRequest request) {
+        return ApiResponse.ok(userService.me(request == null ? new PageRequest() : request));
     }
 }

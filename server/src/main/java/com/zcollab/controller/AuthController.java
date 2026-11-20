@@ -1,11 +1,11 @@
 package com.zcollab.controller;
 
 import com.zcollab.common.ApiResponse;
-import com.zcollab.dto.LoginRequest;
-import com.zcollab.dto.PasswordRequest;
-import com.zcollab.dto.RegisterRequest;
-import com.zcollab.vo.LoggedInUser;
-import com.zcollab.vo.RegisteredUser;
+import com.zcollab.dto.auth.LoginRequest;
+import com.zcollab.dto.auth.PasswordRequest;
+import com.zcollab.dto.auth.RegisterRequest;
+import com.zcollab.vo.auth.LoginResponse;
+import com.zcollab.vo.auth.RegisterResponse;
 import com.zcollab.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,12 +24,12 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ApiResponse<RegisteredUser> register(@RequestBody @Valid RegisterRequest request) {
+    public ApiResponse<RegisterResponse> register(@RequestBody @Valid RegisterRequest request) {
         return ApiResponse.ok(authService.register(request));
     }
 
     @PostMapping("/login")
-    public ApiResponse<LoggedInUser> login(@RequestBody @Valid LoginRequest request) {
+    public ApiResponse<LoginResponse> login(@RequestBody @Valid LoginRequest request) {
         return ApiResponse.ok(authService.login(request));
     }
 

@@ -8,7 +8,7 @@ import App from './App';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <MantineProvider>
+    <MantineProvider theme={{ primaryColor: 'teal' }}>
       <Notifications />
       <App />
     </MantineProvider>

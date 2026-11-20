@@ -1,10 +1,14 @@
-package com.zcollab.dto;
+package com.zcollab.dto.auth;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
-public class LoginRequest {
+@Getter
+@Setter
+public class RegisterRequest {
 
     @NotBlank(message = "账号不能为空")
     @Size(min = 3, max = 32, message = "账号长度须为 3-32 位")
@@ -12,21 +16,9 @@ public class LoginRequest {
     private String username;
 
     @NotBlank(message = "密码不能为空")
+    @Size(min = 8, message = "密码长度不能少于 8 位")
     private String password;
 
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
+    @Size(max = 255, message = "昵称长度不能超过 255")
+    private String name;
 }
