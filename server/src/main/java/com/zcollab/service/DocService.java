@@ -1,8 +1,10 @@
 package com.zcollab.service;
 
 import com.zcollab.dto.doc.CreateDocRequest;
+import com.zcollab.dto.doc.SearchDocRequest;
 import com.zcollab.dto.doc.UpdateDocRequest;
 import com.zcollab.vo.doc.DocResponse;
+import com.zcollab.vo.doc.DocSearchResponse;
 import com.zcollab.vo.doc.DocSummaryResponse;
 
 import java.util.List;
@@ -10,6 +12,8 @@ import java.util.List;
 public interface DocService {
 
     List<DocSummaryResponse> list();
+
+    List<DocSearchResponse> search(SearchDocRequest request);
 
     DocResponse create(CreateDocRequest request);
 

@@ -11,10 +11,22 @@ export interface Doc {
   parentDocId: string | null;
   title: string;
   content: string;
+  contentText: string;
+}
+
+export interface DocSearchResult {
+  id: string;
+  title: string;
+  snippet: string;
+  score: number;
 }
 
 export function listDocs(): Promise<DocSummary[]> {
   return apiPost<DocSummary[]>('/doc/list');
+}
+
+export function searchDocs(keyword: string): Promise<DocSearchResult[]> {
+  return apiPost<DocSearchResult[]>('/doc/search', { keyword });
 }
 
 export function createDoc(parentDocId?: string | null): Promise<Doc> {
@@ -29,7 +41,7 @@ export function claimSeedDoc(id: string): Promise<boolean> {
   return apiPost<boolean>('/doc/claim-seed', { id });
 }
 
-export function updateDoc(id: string, values: { title?: string; content?: string }): Promise<Doc> {
+export function updateDoc(id: string, values: { title?: string; content?: string; text?: string }): Promise<Doc> {
   return apiPost<Doc>('/doc/update', { id, ...values });
 }
 

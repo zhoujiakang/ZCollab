@@ -16,4 +16,6 @@ public class UpdateDocRequest {
     private String title;
 
     private String content;
+
+    private String text;
 }

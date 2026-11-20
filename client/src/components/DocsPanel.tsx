@@ -24,8 +24,10 @@ import {
   deleteDoc,
   getDoc,
   listDocs,
+  searchDocs,
   updateDoc,
   type Doc,
+  type DocSearchResult,
   type DocSummary,
 } from '../api/doc';
 import type { MeUser } from '../api/auth';
@@ -281,6 +283,44 @@ function NodeRow({ node, depth, selectedId, onSelect, onDelete }: NodeRowProps) 
   );
 }
 
+function SnippetText({ snippet }: { snippet: string }) {
+  const parts = snippet.split('\u0001');
+  return (
+    <Text size="xs" c="dimmed" lineClamp={2} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+      {parts.map((part, index) => (index % 2 === 1 ? <strong key={index}>{part}</strong> : part))}
+    </Text>
+  );
+}
+
+interface SearchResultRowProps {
+  result: DocSearchResult;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}
+
+function SearchResultRow({ result, selectedId, onSelect }: SearchResultRowProps) {
+  const [hovered, setHovered] = useState(false);
+  const isSelected = result.id === selectedId;
+
+  return (
+    <Stack
+      gap={2}
+      py={6}
+      px="xs"
+      bg={isSelected ? 'teal.0' : hovered ? 'gray.0' : undefined}
+      style={{ borderRadius: 6, cursor: 'pointer' }}
+      onClick={() => onSelect(result.id)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <Text size="sm" fw={isSelected ? 600 : 400} c={isSelected ? 'teal.8' : undefined} truncate>
+        {result.title || '无标题'}
+      </Text>
+      <SnippetText snippet={result.snippet || '（无正文）'} />
+    </Stack>
+  );
+}
+
 const USER_COLORS = [
   '#e03131', '#1971c2', '#2f9e44', '#f08c00', '#9c36b5', '#0c8599',
   '#d6336c', '#5f3dc4', '#087f5b', '#e67700', '#1864ab', '#c2255c',
@@ -344,6 +384,7 @@ interface CollabEditorProps {
   provider: WebsocketProvider;
   editorRef: { current: Editor | null };
   onDirty: () => void;
+  onReady: () => void;
 }
 
 /** 正文只由 Yjs 提供；连接状态变化不会走到这里重建 editor。 */
@@ -355,9 +396,12 @@ function CollabEditor({
   provider,
   editorRef,
   onDirty,
+  onReady,
 }: CollabEditorProps) {
   const [focused, setFocused] = useState(false);
   const initialContentRef = useRef(initialContent);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   const editor = useEditor({
     extensions: [
@@ -407,19 +451,41 @@ function CollabEditor({
       }
       if (!cancelled) setWaitingForSeed(false);
     };
+    const notifyReady = () => {
+      // Yjs 观察回调可能发生在渲染期间，延后通知上层避免跨组件 setState。
+      window.setTimeout(() => {
+        if (!cancelled) onReadyRef.current();
+      }, 0);
+    };
     const onFragmentChange = () => {
-      if (fragment.length > 0) clearWaiting();
+      if (fragment.length > 0) {
+        window.setTimeout(() => {
+          if (!cancelled) {
+            clearWaiting();
+            onReadyRef.current();
+          }
+        }, 0);
+      }
     };
     fragment.observeDeep(onFragmentChange);
 
     const migrateOnce = async (synced: boolean) => {
       if (!synced || migrationDoneRef.current) return;
       migrationDoneRef.current = true;
-      if (fragment.length !== 0) return;
+      if (fragment.length !== 0) {
+        notifyReady();
+        return;
+      }
       const raw = initialContentRef.current;
-      if (!raw) return;
+      if (!raw) {
+        notifyReady();
+        return;
+      }
       const parsed = parseDocContent(raw);
-      if (!hasDocContent(parsed)) return;
+      if (!hasDocContent(parsed)) {
+        notifyReady();
+        return;
+      }
 
       let seeded = false;
       try {
@@ -433,6 +499,7 @@ function CollabEditor({
         setWaitingForSeed(true);
         if (fragment.length > 0) {
           clearWaiting();
+          notifyReady();
           return;
         }
         waitTimer = setTimeout(() => {
@@ -441,7 +508,10 @@ function CollabEditor({
         }, 5000);
         return;
       }
-      if (fragment.length !== 0) return;
+      if (fragment.length !== 0) {
+        notifyReady();
+        return;
+      }
 
       editor
         .chain()
@@ -451,6 +521,7 @@ function CollabEditor({
           return true;
         })
         .run();
+      notifyReady();
     };
     const onSync = (synced: boolean) => void migrateOnce(synced);
 
@@ -573,6 +644,10 @@ export default function DocsPanel({ workspaceId, user }: DocsPanelProps) {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<DocSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
 
   const { ydoc, provider, status } = useCollabDoc(selected?.id ?? null);
 
@@ -584,6 +659,7 @@ export default function DocsPanel({ workspaceId, user }: DocsPanelProps) {
   const pendingRef = useRef(false);
   const timerRef = useRef<number | null>(null);
   const inFlightRef = useRef<Promise<void> | null>(null);
+  const needsIndexRef = useRef(false);
 
   const clearSaveTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -598,9 +674,10 @@ export default function DocsPanel({ workspaceId, user }: DocsPanelProps) {
   );
 
   const getPayload = useCallback(() => {
-    const payload: { title: string; content?: string } = { title: titleRef.current };
+    const payload: { title: string; content?: string; text?: string } = { title: titleRef.current };
     if (editorRef.current) {
       payload.content = JSON.stringify(editorRef.current.getJSON());
+      payload.text = editorRef.current.getText();
     }
     return payload;
   }, []);
@@ -662,6 +739,12 @@ export default function DocsPanel({ workspaceId, user }: DocsPanelProps) {
     }, SAVE_DELAY);
   }, [clearSaveTimer, flushNow]);
 
+  const handleEditorReady = useCallback(() => {
+    if (!needsIndexRef.current) return;
+    needsIndexRef.current = false;
+    markDirty();
+  }, [markDirty]);
+
   const flushBeforeSwitch = useCallback(async () => {
     clearSaveTimer();
     if (inFlightRef.current) {
@@ -698,12 +781,52 @@ export default function DocsPanel({ workspaceId, user }: DocsPanelProps) {
   }, [flushNow]);
 
   useEffect(() => {
+    const next = searchInput.trim();
+    if (!next) {
+      setSearchTerm('');
+      return;
+    }
+    const timer = window.setTimeout(() => setSearchTerm(next), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+
+  const searchPending = searchInput.trim() !== searchTerm;
+
+  useEffect(() => {
+    if (!searchTerm) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    let active = true;
+    setSearchResults([]);
+    setSearching(true);
+    searchDocs(searchTerm)
+      .then((items) => {
+        if (active) setSearchResults(items);
+      })
+      .catch((error) => {
+        if (active) {
+          setSearchResults([]);
+          notifyError(error);
+        }
+      })
+      .finally(() => {
+        if (active) setSearching(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [searchTerm, workspaceId]);
+
+  useEffect(() => {
     let active = true;
     clearSaveTimer();
     docIdRef.current = null;
     titleRef.current = '';
     dirtyRef.current = false;
     pendingRef.current = false;
+    needsIndexRef.current = false;
     setSelected(null);
     setTitle('');
     setSaveStatus('saved');
@@ -731,6 +854,7 @@ export default function DocsPanel({ workspaceId, user }: DocsPanelProps) {
     titleRef.current = doc.title;
     dirtyRef.current = false;
     pendingRef.current = false;
+    needsIndexRef.current = Boolean(!doc.contentText && doc.content);
     setSelected(doc);
     setTitle(doc.title);
     setSaveStatus('saved');
@@ -743,6 +867,13 @@ export default function DocsPanel({ workspaceId, user }: DocsPanelProps) {
       .then(openDoc)
       .catch(notifyError)
       .finally(() => setBusy(false));
+  };
+
+  const selectFromSearch = (id: string) => {
+    setSearchInput('');
+    setSearchTerm('');
+    setSearchResults([]);
+    selectDoc(id);
   };
 
   const handleCreate = () => {
@@ -770,10 +901,12 @@ export default function DocsPanel({ workspaceId, user }: DocsPanelProps) {
       .then(() => {
         const removed = collectRemoved(docs, id);
         setDocs((prev) => prev.filter((item) => !removed.has(item.id)));
+        setSearchResults((prev) => prev.filter((item) => !removed.has(item.id)));
         if (selected && removed.has(selected.id)) {
           setSelected(null);
           setTitle('');
           titleRef.current = '';
+          needsIndexRef.current = false;
           setSaveStatus('saved');
         }
         notifications.show({ color: 'green', title: '已删除', message: '' });
@@ -805,10 +938,35 @@ export default function DocsPanel({ workspaceId, user }: DocsPanelProps) {
           p="sm"
           style={{ borderRight: '1px solid var(--mantine-color-gray-3)' }}
         >
+          <TextInput
+            placeholder="搜索文档"
+            aria-label="搜索文档"
+            size="compact-sm"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.currentTarget.value)}
+            mb="sm"
+          />
           <Button fullWidth size="compact-sm" loading={busy} onClick={handleCreate} mb="sm">
             新建文档
           </Button>
-          {loading ? (
+          {searchTerm ? (
+            searchPending || searching ? (
+              <Center py="xl"><Loader color="teal" size="sm" /></Center>
+            ) : searchResults.length ? (
+              <Stack gap={2}>
+                {searchResults.map((result) => (
+                  <SearchResultRow
+                    key={result.id}
+                    result={result}
+                    selectedId={selected?.id ?? null}
+                    onSelect={selectFromSearch}
+                  />
+                ))}
+              </Stack>
+            ) : (
+              <Text size="sm" c="dimmed" ta="center" py="xl">没有匹配的文档</Text>
+            )
+          ) : loading ? (
             <Center py="xl"><Loader color="teal" size="sm" /></Center>
           ) : tree.length ? (
             <Stack gap={2}>{tree.map((node) => renderNode(node, 0))}</Stack>
@@ -848,6 +1006,7 @@ export default function DocsPanel({ workspaceId, user }: DocsPanelProps) {
                   provider={provider}
                   editorRef={editorRef}
                   onDirty={markDirty}
+                  onReady={handleEditorReady}
                 />
               ) : (
                 <Center py={80}><Loader color="teal" size="sm" /></Center>

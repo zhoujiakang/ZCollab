@@ -5,9 +5,11 @@ import com.zcollab.dto.doc.CompactDocRequest;
 import com.zcollab.dto.doc.CreateDocRequest;
 import com.zcollab.dto.doc.DeleteDocRequest;
 import com.zcollab.dto.doc.GetDocRequest;
+import com.zcollab.dto.doc.SearchDocRequest;
 import com.zcollab.dto.doc.UpdateDocRequest;
 import com.zcollab.service.DocService;
 import com.zcollab.vo.doc.DocResponse;
+import com.zcollab.vo.doc.DocSearchResponse;
 import com.zcollab.vo.doc.DocSummaryResponse;
 import com.zcollab.exception.BusinessException;
 import com.zcollab.exception.ErrorCode;
@@ -53,6 +55,11 @@ public class DocController {
     @PostMapping("/update")
     public ApiResponse<DocResponse> update(@RequestBody @Valid UpdateDocRequest request) {
         return ApiResponse.ok(docService.update(request));
+    }
+
+    @PostMapping("/search")
+    public ApiResponse<List<DocSearchResponse>> search(@RequestBody @Valid SearchDocRequest request) {
+        return ApiResponse.ok(docService.search(request));
     }
 
     @PostMapping("/delete")

@@ -24,6 +24,8 @@ public class Doc {
 
     private String content;
 
+    private String contentText;
+
     private OffsetDateTime createdAt;
 
     private OffsetDateTime updatedAt;

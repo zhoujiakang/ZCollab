@@ -2,6 +2,7 @@ package com.zcollab.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.zcollab.entity.Doc;
+import com.zcollab.vo.doc.DocSearchRow;
 import com.zcollab.vo.doc.DocSnapshotRow;
 import com.zcollab.vo.doc.DocSummaryRow;
 import org.apache.ibatis.annotations.Param;
@@ -20,6 +21,24 @@ public interface DocMapper extends BaseMapper<Doc> {
             ORDER BY created_at ASC, id ASC
             """)
     List<DocSummaryRow> selectByWorkspace(@Param("workspaceId") Long workspaceId);
+
+    @Select("""
+            SELECT id, title, content_text,
+                   CASE
+                       WHEN title ILIKE '%' || #{keyword} || '%' THEN 100 + similarity(title, #{keyword})
+                       ELSE similarity(content_text, #{keyword})
+                   END AS score
+            FROM doc
+            WHERE workspace_id = #{workspaceId}
+              AND deleted_at IS NULL
+              AND (title ILIKE '%' || #{keyword} || '%'
+                   OR content_text ILIKE '%' || #{keyword} || '%')
+            ORDER BY score DESC, updated_at DESC
+            LIMIT #{limit}
+            """)
+    List<DocSearchRow> search(@Param("workspaceId") Long workspaceId,
+                              @Param("keyword") String keyword,
+                              @Param("limit") int limit);
 
     @Select("""
             WITH RECURSIVE descendants AS (
