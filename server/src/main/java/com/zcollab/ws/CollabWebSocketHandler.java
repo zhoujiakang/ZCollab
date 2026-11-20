@@ -11,6 +11,7 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.BinaryWebSocketHandler;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -21,13 +22,15 @@ import static com.zcollab.ws.CollabHandshakeInterceptor.*;
 public class CollabWebSocketHandler extends BinaryWebSocketHandler {
 
     private static final Logger log = LoggerFactory.getLogger(CollabWebSocketHandler.class);
-    private static final long IDLE_TIMEOUT_MS = 60_000L;
+    private static final long IDLE_TIMEOUT_MS = 5 * 60_000L;
     private static final int CLOSE_IDLE_TIMEOUT = 1001;
 
     private final CollabRoomRegistry registry;
+    private final CollabSyncService syncService;
 
-    public CollabWebSocketHandler(CollabRoomRegistry registry) {
+    public CollabWebSocketHandler(CollabRoomRegistry registry, CollabSyncService syncService) {
         this.registry = registry;
+        this.syncService = syncService;
     }
 
     @Override
@@ -45,12 +48,19 @@ public class CollabWebSocketHandler extends BinaryWebSocketHandler {
         attributes.put(ATTR_LAST_ACTIVE_AT, new AtomicLong(System.currentTimeMillis()));
         registry.register(docId, session);
         log.info("文档 {} 有人加入，当前 {} 人", docId, registry.size(docId));
+        syncService.onClientJoin(docId, session);
     }
 
     @Override
     protected void handleBinaryMessage(WebSocketSession session, BinaryMessage message) {
         touch(session);
-        // 协同消息内容暂不处理，二进制帧直接丢弃。
+        Long docId = (Long) session.getAttributes().get(ATTR_DOC_ID);
+        if (docId != null) {
+            ByteBuffer payload = message.getPayload();
+            byte[] bytes = new byte[payload.remaining()];
+            payload.get(bytes);
+            syncService.handleFrame(docId, bytes, session);
+        }
     }
 
     @Override
@@ -79,7 +89,7 @@ public class CollabWebSocketHandler extends BinaryWebSocketHandler {
                 AtomicLong lastActive = (AtomicLong) session.getAttributes().get(ATTR_LAST_ACTIVE_AT);
                 long last = lastActive == null ? 0L : lastActive.get();
                 if (now - last >= IDLE_TIMEOUT_MS) {
-                    log.info("文档 {} 的连接 {} 闲置超过 60 秒，主动关闭", docId, session.getId());
+                    log.info("文档 {} 的连接 {} 闲置超过 5 分钟，主动关闭", docId, session.getId());
                     close(session, CLOSE_IDLE_TIMEOUT, "idle timeout");
                     removeAndLog(session);
                 }
