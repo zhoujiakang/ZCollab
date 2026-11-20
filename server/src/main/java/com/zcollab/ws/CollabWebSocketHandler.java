@@ -47,7 +47,7 @@ public class CollabWebSocketHandler extends BinaryWebSocketHandler {
         Long docId = (Long) attributes.get(ATTR_DOC_ID);
         attributes.put(ATTR_LAST_ACTIVE_AT, new AtomicLong(System.currentTimeMillis()));
         registry.register(docId, session);
-        log.info("文档 {} 有人加入，当前 {} 人", docId, registry.size(docId));
+        log.info("文档 {} 在线 {} 人", docId, registry.size(docId));
         syncService.onClientJoin(docId, session);
     }
 
@@ -107,7 +107,8 @@ public class CollabWebSocketHandler extends BinaryWebSocketHandler {
     private void removeAndLog(WebSocketSession session) {
         Long docId = (Long) session.getAttributes().get(ATTR_DOC_ID);
         if (docId != null && registry.unregister(docId, session)) {
-            log.info("文档 {} 有人离开，当前 {} 人", docId, registry.size(docId));
+            syncService.onClientLeft(docId, session);
+            log.info("文档 {} 在线 {} 人", docId, registry.size(docId));
         }
     }
 

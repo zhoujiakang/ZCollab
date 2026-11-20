@@ -27,6 +27,18 @@ class Lib0CodecTest {
     }
 
     @Test
+    void varUintRoundTripForUnsigned32BitClientId() {
+        int clientId = (int) 3416484842L;
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Lib0Codec.writeVarUint(out, clientId);
+        byte[] encoded = out.toByteArray();
+
+        assertEquals(clientId, Lib0Codec.readVarUint(ByteBuffer.wrap(encoded)));
+        assertEquals("3416484842", Integer.toUnsignedString(clientId));
+    }
+
+    @Test
     void varStringRoundTripForChineseAndEmptyString() {
         for (String value : List.of("协同编辑：你好，世界！🎉", "")) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();

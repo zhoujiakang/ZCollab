@@ -16,18 +16,19 @@ public final class Lib0Codec {
     private Lib0Codec() {
     }
 
-    /** Write an unsigned integer, 7 bits per byte, high bit set when more bytes follow. */
+    /**
+     * Write an unsigned 32-bit integer, 7 bits per byte, high bit set when more bytes follow.
+     * Negative int values are interpreted as their unsigned 32-bit representation, matching
+     * readVarUint and Yjs client ids.
+     */
     public static void writeVarUint(ByteArrayOutputStream out, int value) {
         Objects.requireNonNull(out, "out");
-        if (value < 0) {
-            throw new IllegalArgumentException("varUint must be non-negative: " + value);
-        }
-        int remaining = value;
+        long remaining = Integer.toUnsignedLong(value);
         while ((remaining & ~DATA_MASK) != 0) {
-            out.write((remaining & DATA_MASK) | CONTINUATION_BIT);
+            out.write((int) ((remaining & DATA_MASK) | CONTINUATION_BIT));
             remaining >>>= 7;
         }
-        out.write(remaining);
+        out.write((int) remaining);
     }
 
     /** Read a varUint, advancing the buffer cursor. Accepts the unsigned 32-bit range. */
