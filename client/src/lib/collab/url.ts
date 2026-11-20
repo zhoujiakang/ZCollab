@@ -3,9 +3,6 @@
  */
 export function getCollabUrl(docId: string): string {
   const path = `/collab/${encodeURIComponent(docId)}`;
-  if (import.meta.env.DEV) {
-    return `ws://localhost:8080${path}`;
-  }
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}${path}`;
 }
