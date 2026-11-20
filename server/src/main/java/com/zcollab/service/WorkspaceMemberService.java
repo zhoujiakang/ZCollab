@@ -24,6 +24,10 @@ public interface WorkspaceMemberService {
 
     PageResponse<MemberResponse> members(PageRequest request);
 
+    MemberResponse addMember(String username);
+
+    void removeMember(Long userId);
+
     Long currentWorkspaceId();
 
     WorkspaceMembership requireCurrentMembership();

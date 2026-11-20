@@ -7,6 +7,8 @@ import com.zcollab.dto.common.PageRequest;
 import com.zcollab.entity.WorkspaceMember;
 import com.zcollab.exception.BusinessException;
 import com.zcollab.exception.ErrorCode;
+import com.zcollab.entity.User;
+import com.zcollab.mapper.UserMapper;
 import com.zcollab.mapper.WorkspaceMemberMapper;
 import com.zcollab.service.WorkspaceMemberService;
 import com.zcollab.vo.common.PageResponse;
@@ -14,6 +16,7 @@ import com.zcollab.vo.workspace.MemberResponse;
 import com.zcollab.vo.workspace.MemberRow;
 import com.zcollab.vo.workspace.WorkspaceMembership;
 import com.zcollab.vo.workspace.WorkspaceSummaryResponse;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,11 +25,14 @@ import java.util.List;
 public class WorkspaceMemberServiceImpl implements WorkspaceMemberService {
 
     private final WorkspaceMemberMapper workspaceMemberMapper;
+    private final UserMapper userMapper;
     private final WorkspaceContext workspaceContext;
 
     public WorkspaceMemberServiceImpl(WorkspaceMemberMapper workspaceMemberMapper,
+                                      UserMapper userMapper,
                                       WorkspaceContext workspaceContext) {
         this.workspaceMemberMapper = workspaceMemberMapper;
+        this.userMapper = userMapper;
         this.workspaceContext = workspaceContext;
     }
 
@@ -85,6 +91,54 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService {
                         .map(this::toMember)
                         .toList(),
                 workspaceMemberMapper.countMembers(workspaceId), request.getPage(), request.getPageSize());
+    }
+
+    @Override
+    public MemberResponse addMember(String username) {
+        WorkspaceMembership membership = requireCurrentMembership();
+        Long workspaceId = membership.workspaceId();
+        User user = userMapper.selectByUsername(username.trim());
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND);
+        }
+
+        MemberRow existing = workspaceMemberMapper.selectMemberRow(workspaceId, user.getId());
+        if (existing != null) {
+            return toMember(existing);
+        }
+
+        WorkspaceMember member = new WorkspaceMember();
+        member.setWorkspaceId(workspaceId);
+        member.setUserId(user.getId());
+        member.setRole("member");
+        try {
+            workspaceMemberMapper.insert(member);
+        } catch (DuplicateKeyException ignored) {
+            // 并发邀请时由唯一键兜底，直接返回已有成员
+        }
+        return toMember(workspaceMemberMapper.selectMemberRow(workspaceId, user.getId()));
+    }
+
+    @Override
+    public void removeMember(Long userId) {
+        WorkspaceMembership membership = requireCurrentMembership();
+        long currentUserId = StpUtil.getLoginIdAsLong();
+        WorkspaceMember target = findMember(membership.workspaceId(), userId);
+        if (target == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND);
+        }
+        boolean isOwner = "owner".equals(membership.role());
+        if (userId == currentUserId && isOwner) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST);
+        }
+        if (userId != currentUserId && !isOwner) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+
+        workspaceMemberMapper.deleteById(target.getId());
+        if (userId == currentUserId) {
+            workspaceContext.clearActiveWorkspaceId();
+        }
     }
 
     @Override

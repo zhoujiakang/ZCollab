@@ -1,4 +1,4 @@
-import { apiPost } from './client';
+import { apiPost, apiPostVoid } from './client';
 
 export interface PageParams {
   page?: number;
@@ -49,4 +49,12 @@ export function fetchWorkspaceInfo(): Promise<WorkspaceInfo> {
 
 export function fetchMembers(params: PageParams = {}): Promise<PageResponse<Member>> {
   return apiPost<PageResponse<Member>>('/workspace/members', params);
+}
+
+export function inviteMember(username: string): Promise<Member> {
+  return apiPost<Member>('/workspace/members/add', { username });
+}
+
+export function removeMember(userId: string): Promise<void> {
+  return apiPostVoid('/workspace/members/remove', { userId });
 }

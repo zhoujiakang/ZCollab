@@ -50,3 +50,14 @@ export async function apiPost<T>(url: string, body?: unknown, config?: AxiosRequ
     return rethrow(error);
   }
 }
+
+export async function apiPostVoid(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<void> {
+  try {
+    const { data } = await http.post<ApiResponse<unknown>>(url, body ?? {}, config);
+    if (data && typeof data.code === 'number' && data.code !== 0) {
+      throw new Error(data.message || '请求失败');
+    }
+  } catch (error) {
+    return rethrow(error);
+  }
+}

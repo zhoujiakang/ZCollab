@@ -43,6 +43,12 @@ export default function App() {
     return me;
   };
 
+  const handleRefreshUser = async () => {
+    const me = await refreshMe();
+    setShowWizard(me.workspaces.items.length === 0 || !me.activeWorkspace);
+    return me;
+  };
+
   const handleLogin = async (values: { username: string; password: string }) => {
     try {
       await login(values.username, values.password);
@@ -122,6 +128,7 @@ export default function App() {
       user={user}
       activeWorkspace={activeWorkspace}
       onSwitch={handleSwitch}
+      onRefreshUser={handleRefreshUser}
       onLogout={handleLogout}
       onNewWorkspace={() => setShowWizard(true)}
     />

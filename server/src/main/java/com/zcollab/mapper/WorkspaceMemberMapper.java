@@ -27,6 +27,17 @@ public interface WorkspaceMemberMapper extends BaseMapper<WorkspaceMember> {
             FROM workspace_member m
             JOIN sys_user u ON u.id = m.user_id
             WHERE m.workspace_id = #{workspaceId}
+              AND m.user_id = #{userId}
+            LIMIT 1
+            """)
+    MemberRow selectMemberRow(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId);
+
+    @Select("""
+            SELECT u.id AS id, u.username AS username, u.name AS name,
+                   m.role AS role, m.created_at AS joined_at
+            FROM workspace_member m
+            JOIN sys_user u ON u.id = m.user_id
+            WHERE m.workspace_id = #{workspaceId}
             ORDER BY m.created_at ASC, m.id ASC
             LIMIT #{size} OFFSET #{offset}
             """)
