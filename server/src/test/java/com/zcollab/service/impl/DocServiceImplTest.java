@@ -83,7 +83,7 @@ class DocServiceImplTest {
         SearchDocRequest request = new SearchDocRequest();
         request.setKeyword("%");
 
-        List<DocSearchResponse> result = new DocServiceImpl(mapper, members, null, null).search(request);
+        List<DocSearchResponse> result = new DocServiceImpl(mapper, null, members, null, null).search(request);
 
         assertEquals("%", mapperKeywords[0]);
         assertEquals("\\%", mapperKeywords[1]);

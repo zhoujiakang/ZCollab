@@ -1,23 +1,30 @@
 package com.zcollab.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.zcollab.core.store.DocStore;
 import com.zcollab.dto.doc.CreateDocRequest;
 import com.zcollab.dto.doc.SearchDocRequest;
 import com.zcollab.dto.doc.UpdateDocRequest;
 import com.zcollab.entity.Doc;
+import com.zcollab.entity.ShareLink;
 import com.zcollab.exception.BusinessException;
 import com.zcollab.exception.ErrorCode;
 import com.zcollab.mapper.DocMapper;
+import com.zcollab.mapper.ShareLinkMapper;
 import com.zcollab.service.DocService;
 import com.zcollab.service.WorkspaceMemberService;
 import com.zcollab.vo.doc.DocResponse;
 import com.zcollab.vo.doc.DocSearchResponse;
 import com.zcollab.vo.doc.DocSummaryResponse;
+import com.zcollab.vo.share.ShareCreateResponse;
+import com.zcollab.vo.share.ShareStatusResponse;
 import com.zcollab.ws.CollabRoomRegistry;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -28,15 +35,21 @@ public class DocServiceImpl implements DocService {
     private static final int DEFAULT_SEARCH_LIMIT = 20;
     private static final int MAX_SEARCH_LIMIT = 50;
     private static final String SNIPPET_MARK = "\u0001";
+    private static final String TOKEN_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    private static final int TOKEN_LENGTH = 22;
+    private static final SecureRandom TOKEN_RANDOM = new SecureRandom();
 
     private final DocMapper docMapper;
+    private final ShareLinkMapper shareLinkMapper;
     private final WorkspaceMemberService workspaceMemberService;
     private final DocStore docStore;
     private final CollabRoomRegistry roomRegistry;
 
-    public DocServiceImpl(DocMapper docMapper, WorkspaceMemberService workspaceMemberService,
+    public DocServiceImpl(DocMapper docMapper, ShareLinkMapper shareLinkMapper,
+                          WorkspaceMemberService workspaceMemberService,
                           DocStore docStore, CollabRoomRegistry roomRegistry) {
         this.docMapper = docMapper;
+        this.shareLinkMapper = shareLinkMapper;
         this.workspaceMemberService = workspaceMemberService;
         this.docStore = docStore;
         this.roomRegistry = roomRegistry;
@@ -158,6 +171,58 @@ public class DocServiceImpl implements DocService {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
         docStore.saveSnapshot(id, snapshot);
+    }
+
+    @Override
+    public ShareCreateResponse createShareLink(Long id) {
+        Doc doc = requireDoc(id, currentWorkspaceId());
+        ShareLink active = shareLinkMapper.selectActiveByDocId(doc.getId());
+        if (active != null) {
+            return toCreateResponse(active);
+        }
+
+        ShareLink link = new ShareLink();
+        link.setDocId(doc.getId());
+        link.setWorkspaceId(doc.getWorkspaceId());
+        link.setToken(generateToken());
+        link.setCreatedBy(StpUtil.getLoginIdAsLong());
+        try {
+            shareLinkMapper.insert(link);
+        } catch (DuplicateKeyException e) {
+            // 并发创建时部分唯一索引只放行一个，其余请求复用胜出的那条链接。
+            ShareLink winner = shareLinkMapper.selectActiveByDocId(doc.getId());
+            if (winner != null) {
+                return toCreateResponse(winner);
+            }
+            throw e;
+        }
+        return toCreateResponse(link);
+    }
+
+    @Override
+    @Transactional
+    public void revokeShareLink(Long id) {
+        Doc doc = requireDoc(id, currentWorkspaceId());
+        shareLinkMapper.revokeActiveByDocId(doc.getId(), doc.getWorkspaceId(), OffsetDateTime.now());
+    }
+
+    @Override
+    public ShareStatusResponse shareStatus(Long id) {
+        Doc doc = requireDoc(id, currentWorkspaceId());
+        ShareLink active = shareLinkMapper.selectActiveByDocId(doc.getId());
+        return new ShareStatusResponse(active != null, active == null ? null : active.getToken());
+    }
+
+    private static ShareCreateResponse toCreateResponse(ShareLink link) {
+        return new ShareCreateResponse(link.getToken(), "/s/" + link.getToken());
+    }
+
+    static String generateToken() {
+        StringBuilder token = new StringBuilder(TOKEN_LENGTH);
+        for (int i = 0; i < TOKEN_LENGTH; i += 1) {
+            token.append(TOKEN_ALPHABET.charAt(TOKEN_RANDOM.nextInt(TOKEN_ALPHABET.length())));
+        }
+        return token.toString();
     }
 
     private Long currentWorkspaceId() {

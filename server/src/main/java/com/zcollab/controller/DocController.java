@@ -11,6 +11,8 @@ import com.zcollab.service.DocService;
 import com.zcollab.vo.doc.DocResponse;
 import com.zcollab.vo.doc.DocSearchResponse;
 import com.zcollab.vo.doc.DocSummaryResponse;
+import com.zcollab.vo.share.ShareCreateResponse;
+import com.zcollab.vo.share.ShareStatusResponse;
 import com.zcollab.exception.BusinessException;
 import com.zcollab.exception.ErrorCode;
 import jakarta.validation.Valid;
@@ -78,5 +80,21 @@ public class DocController {
         }
         docService.compact(request.getId(), snapshot);
         return ApiResponse.ok(true);
+    }
+
+    @PostMapping("/share/create")
+    public ApiResponse<ShareCreateResponse> createShare(@RequestBody @Valid GetDocRequest request) {
+        return ApiResponse.ok(docService.createShareLink(request.getId()));
+    }
+
+    @PostMapping("/share/revoke")
+    public ApiResponse<Void> revokeShare(@RequestBody @Valid GetDocRequest request) {
+        docService.revokeShareLink(request.getId());
+        return ApiResponse.ok(null);
+    }
+
+    @PostMapping("/share/status")
+    public ApiResponse<ShareStatusResponse> shareStatus(@RequestBody @Valid GetDocRequest request) {
+        return ApiResponse.ok(docService.shareStatus(request.getId()));
     }
 }

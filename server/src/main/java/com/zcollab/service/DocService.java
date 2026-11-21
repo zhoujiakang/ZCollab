@@ -6,6 +6,8 @@ import com.zcollab.dto.doc.UpdateDocRequest;
 import com.zcollab.vo.doc.DocResponse;
 import com.zcollab.vo.doc.DocSearchResponse;
 import com.zcollab.vo.doc.DocSummaryResponse;
+import com.zcollab.vo.share.ShareCreateResponse;
+import com.zcollab.vo.share.ShareStatusResponse;
 
 import java.util.List;
 
@@ -26,4 +28,10 @@ public interface DocService {
     void delete(Long id);
 
     void compact(Long id, byte[] snapshot);
+
+    ShareCreateResponse createShareLink(Long id);
+
+    void revokeShareLink(Long id);
+
+    ShareStatusResponse shareStatus(Long id);
 }
