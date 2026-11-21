@@ -12,4 +12,6 @@ public class MoveDocRequest {
     private Long id;
 
     private Long parentDocId;
+
+    private Long beforeDocId;
 }

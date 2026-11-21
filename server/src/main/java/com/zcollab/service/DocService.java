@@ -27,7 +27,7 @@ public interface DocService {
 
     void delete(Long id);
 
-    void move(Long id, Long parentId);
+    void move(Long id, Long parentId, Long beforeDocId);
 
     void compact(Long id, byte[] snapshot);
 

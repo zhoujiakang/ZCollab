@@ -20,6 +20,8 @@ public class Doc {
 
     private Long parentDocId;
 
+    private Integer sortOrder;
+
     private String title;
 
     private String content;

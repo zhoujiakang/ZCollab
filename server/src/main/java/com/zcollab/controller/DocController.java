@@ -73,7 +73,7 @@ public class DocController {
 
     @PostMapping("/move")
     public ApiResponse<Boolean> move(@RequestBody @Valid MoveDocRequest request) {
-        docService.move(request.getId(), request.getParentDocId());
+        docService.move(request.getId(), request.getParentDocId(), request.getBeforeDocId());
         return ApiResponse.ok(true);
     }
 

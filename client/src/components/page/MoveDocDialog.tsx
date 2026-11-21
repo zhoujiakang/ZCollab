@@ -104,7 +104,7 @@ export default function MoveDocDialog({ opened, doc, docs, onClose, onMoved }: M
     if (selected === undefined || isCurrentParent || busy) return;
     setBusy(true);
     try {
-      await moveDoc(doc.id, selected);
+      await moveDoc({ id: doc.id, parentDocId: selected });
       notifications.show({ color: 'green', title: '已移动', message: '' });
       onMoved(doc.id, selected);
       onClose();

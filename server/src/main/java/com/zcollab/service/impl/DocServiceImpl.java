@@ -26,9 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 
 @Service
 public class DocServiceImpl implements DocService {
@@ -93,6 +93,7 @@ public class DocServiceImpl implements DocService {
         Doc doc = new Doc();
         doc.setWorkspaceId(workspaceId);
         doc.setParentDocId(request.getParentDocId());
+        doc.setSortOrder(docMapper.selectNextSortOrder(workspaceId, request.getParentDocId()));
         doc.setTitle(title);
         doc.setContent("");
         doc.setContentText("");
@@ -170,7 +171,7 @@ public class DocServiceImpl implements DocService {
 
     @Override
     @Transactional
-    public void move(Long id, Long parentId) {
+    public void move(Long id, Long parentId, Long beforeDocId) {
         Long workspaceId = currentWorkspaceId();
         Doc doc = requireDoc(id, workspaceId);
         if (parentId != null) {
@@ -182,14 +183,26 @@ public class DocServiceImpl implements DocService {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, message);
             }
         }
-        if (Objects.equals(doc.getParentDocId(), parentId)) {
-            return;
+
+        List<Long> siblings = new ArrayList<>(
+                docMapper.selectSortedSiblingIds(workspaceId, parentId, id));
+        int insertAt = siblings.size();
+        if (beforeDocId != null) {
+            insertAt = siblings.indexOf(beforeDocId);
+            if (insertAt < 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "beforeDocId 必须与新父级同级");
+            }
         }
+        siblings.add(insertAt, id);
+
         docMapper.update(null, new LambdaUpdateWrapper<Doc>()
                 .eq(Doc::getId, doc.getId())
                 .eq(Doc::getWorkspaceId, workspaceId)
                 .isNull(Doc::getDeletedAt)
                 .set(Doc::getParentDocId, parentId));
+        for (int i = 0; i < siblings.size(); i += 1) {
+            docMapper.updateSortOrder(siblings.get(i), workspaceId, i);
+        }
     }
 
     @Override

@@ -5,6 +5,7 @@
 }
 
 .row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -119,4 +120,47 @@
   width: 1px;
   height: 1px;
   pointer-events: none;
+}
+
+.dragging {
+  opacity: 0.45;
+}
+
+.dropBefore::before,
+.dropAfter::after {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--mantine-primary-color-filled);
+  content: '';
+  pointer-events: none;
+}
+
+.dropBefore::before {
+  top: 0;
+}
+
+.dropAfter::after {
+  bottom: 0;
+}
+
+.dropInside,
+.dropInside:hover {
+  background-color: var(--mantine-primary-color-light);
+  outline: 1px solid var(--mantine-primary-color-filled);
+}
+
+.blankDropZone {
+  min-height: 24px;
+  margin-top: 2px;
+  border: 1px dashed transparent;
+  border-radius: var(--mantine-radius-sm);
+}
+
+.blankDropActive {
+  border-color: var(--mantine-primary-color-filled);
+  background-color: var(--mantine-primary-color-light);
 }

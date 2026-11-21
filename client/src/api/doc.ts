@@ -50,6 +50,12 @@ export function deleteDoc(id: string): Promise<void> {
   return apiPost<boolean>('/doc/delete', { id }).then(() => undefined);
 }
 
-export function moveDoc(id: string, parentDocId: string | null): Promise<void> {
-  return apiPost<boolean>('/doc/move', { id, parentDocId }).then(() => undefined);
+export interface MoveDocInput {
+  id: string;
+  parentDocId: string | null;
+  beforeDocId?: string | null;
+}
+
+export function moveDoc({ id, parentDocId, beforeDocId = null }: MoveDocInput): Promise<void> {
+  return apiPost<boolean>('/doc/move', { id, parentDocId, beforeDocId }).then(() => undefined);
 }

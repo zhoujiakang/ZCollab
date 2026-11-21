@@ -18,9 +18,40 @@ public interface DocMapper extends BaseMapper<Doc> {
             SELECT id, parent_doc_id, title
             FROM doc
             WHERE workspace_id = #{workspaceId} AND deleted_at IS NULL
-            ORDER BY created_at ASC, id ASC
+            ORDER BY sort_order ASC, created_at ASC, id ASC
             """)
     List<DocSummaryRow> selectByWorkspace(@Param("workspaceId") Long workspaceId);
+
+    @Select("""
+            SELECT COALESCE(MAX(sort_order), -1) + 1
+            FROM doc
+            WHERE workspace_id = #{workspaceId}
+              AND parent_doc_id IS NOT DISTINCT FROM #{parentDocId}
+              AND deleted_at IS NULL
+            """)
+    int selectNextSortOrder(@Param("workspaceId") Long workspaceId,
+                            @Param("parentDocId") Long parentDocId);
+
+    @Select("""
+            SELECT id
+            FROM doc
+            WHERE workspace_id = #{workspaceId}
+              AND parent_doc_id IS NOT DISTINCT FROM #{parentDocId}
+              AND deleted_at IS NULL
+              AND id != #{excludeId}
+            ORDER BY sort_order ASC, created_at ASC, id ASC
+            """)
+    List<Long> selectSortedSiblingIds(@Param("workspaceId") Long workspaceId,
+                                      @Param("parentDocId") Long parentDocId,
+                                      @Param("excludeId") Long excludeId);
+
+    @Update("""
+            UPDATE doc SET sort_order = #{sortOrder}
+            WHERE id = #{id} AND workspace_id = #{workspaceId} AND deleted_at IS NULL
+            """)
+    int updateSortOrder(@Param("id") Long id,
+                        @Param("workspaceId") Long workspaceId,
+                        @Param("sortOrder") int sortOrder);
 
     @Select("""
             SELECT id, title, content_text,

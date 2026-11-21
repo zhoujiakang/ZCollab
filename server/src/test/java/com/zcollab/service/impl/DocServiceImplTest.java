@@ -117,7 +117,7 @@ class DocServiceImplTest {
         harness.descendants = List.of(1L, 2L, 3L);
 
         BusinessException error = assertThrows(BusinessException.class,
-                () -> harness.service().move(1L, 3L));
+                () -> harness.service().move(1L, 3L, null));
 
         assertEquals(ErrorCode.BAD_REQUEST, error.getErrorCode());
         assertEquals("不能移动到自己的子页面下", error.getMessage());
@@ -132,7 +132,7 @@ class DocServiceImplTest {
         harness.descendants = List.of(1L);
 
         BusinessException error = assertThrows(BusinessException.class,
-                () -> harness.service().move(1L, 1L));
+                () -> harness.service().move(1L, 1L, null));
 
         assertEquals(ErrorCode.BAD_REQUEST, error.getErrorCode());
         assertEquals("不能移动到自身", error.getMessage());
@@ -146,7 +146,7 @@ class DocServiceImplTest {
         harness.addDoc(2L, null, 2L);
 
         BusinessException error = assertThrows(BusinessException.class,
-                () -> harness.service().move(1L, 2L));
+                () -> harness.service().move(1L, 2L, null));
 
         assertEquals(ErrorCode.NOT_FOUND, error.getErrorCode());
         assertEquals(List.of("selectById", "selectById"), harness.calls);
@@ -154,14 +154,44 @@ class DocServiceImplTest {
     }
 
     @Test
-    void moveToCurrentParentSkipsUpdate() {
+    void moveToCurrentParentAppendsToEnd() {
         MoveHarness harness = new MoveHarness();
         harness.addDoc(1L, null, 1L);
         harness.addDoc(2L, 1L, 1L);
+        harness.siblings = List.of(3L);
 
-        harness.service().move(2L, 1L);
+        harness.service().move(2L, 1L, null);
 
-        assertEquals(List.of("selectById", "selectById", "selectDescendantIds"), harness.calls);
+        assertEquals(List.of(3L, 2L), harness.sortedIds);
+        assertEquals(List.of(0, 1), harness.sortOrders);
+        assertEquals(1, harness.updateCount);
+    }
+
+    @Test
+    void moveInsertsBeforeSiblingAndRewritesAllSortOrders() {
+        MoveHarness harness = new MoveHarness();
+        harness.addDoc(1L, null, 1L);
+        harness.addDoc(2L, null, 1L);
+        harness.addDoc(3L, null, 1L);
+        harness.siblings = List.of(1L, 2L);
+
+        harness.service().move(3L, null, 1L);
+
+        assertEquals(List.of(3L, 1L, 2L), harness.sortedIds);
+        assertEquals(List.of(0, 1, 2), harness.sortOrders);
+    }
+
+    @Test
+    void moveRejectsBeforeDocThatIsNotSibling() {
+        MoveHarness harness = new MoveHarness();
+        harness.addDoc(1L, null, 1L);
+        harness.addDoc(3L, null, 1L);
+        harness.siblings = List.of(1L, 2L);
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> harness.service().move(3L, null, 9L));
+
+        assertEquals(ErrorCode.BAD_REQUEST, error.getErrorCode());
         assertEquals(0, harness.updateCount);
     }
 
@@ -171,7 +201,7 @@ class DocServiceImplTest {
         harness.addDoc(2L, 1L, 1L);
         harness.addDoc(4L, null, 1L);
 
-        harness.service().move(2L, 4L);
+        harness.service().move(2L, 4L, null);
 
         assertEquals(1, harness.updateCount);
         String set = harness.updateWrapper.getSqlSet();
@@ -190,7 +220,7 @@ class DocServiceImplTest {
         MoveHarness harness = new MoveHarness();
         harness.addDoc(2L, 1L, 1L);
 
-        harness.service().move(2L, null);
+        harness.service().move(2L, null, null);
 
         assertEquals(1, harness.updateCount);
         assertTrue(harness.updateWrapper.getSqlSet().contains("parent_doc_id"));
@@ -200,7 +230,10 @@ class DocServiceImplTest {
     private static class MoveHarness {
         final Map<Long, Doc> docs = new HashMap<>();
         final List<String> calls = new ArrayList<>();
+        final List<Long> sortedIds = new ArrayList<>();
+        final List<Integer> sortOrders = new ArrayList<>();
         List<Long> descendants = List.of();
+        List<Long> siblings = List.of();
         LambdaUpdateWrapper<Doc> updateWrapper;
         int updateCount;
 
@@ -221,9 +254,17 @@ class DocServiceImplTest {
                         return switch (method.getName()) {
                             case "selectById" -> docs.get(args[0]);
                             case "selectDescendantIds" -> descendants;
+                            case "selectSortedSiblingIds" -> siblings;
                             case "update" -> {
                                 updateCount += 1;
-                                updateWrapper = (LambdaUpdateWrapper<Doc>) args[1];
+                                if (updateWrapper == null) {
+                                    updateWrapper = (LambdaUpdateWrapper<Doc>) args[1];
+                                }
+                                yield 1;
+                            }
+                            case "updateSortOrder" -> {
+                                sortedIds.add((Long) args[0]);
+                                sortOrders.add((Integer) args[2]);
                                 yield 1;
                             }
                             default -> throw new UnsupportedOperationException(method.getName());
