@@ -36,6 +36,6 @@ public class WorkspaceMemberController {
     @PostMapping("/members/remove")
     public ApiResponse<Void> removeMember(@RequestBody @Valid RemoveMemberRequest request) {
         workspaceMemberService.removeMember(request.getUserId());
-        return ApiResponse.ok(null);
+        return ApiResponse.ok();
     }
 }

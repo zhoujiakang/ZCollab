@@ -66,19 +66,19 @@ public class DocController {
     }
 
     @PostMapping("/delete")
-    public ApiResponse<Boolean> delete(@RequestBody @Valid DeleteDocRequest request) {
+    public ApiResponse<Void> delete(@RequestBody @Valid DeleteDocRequest request) {
         docService.delete(request.getId());
-        return ApiResponse.ok(true);
+        return ApiResponse.ok();
     }
 
     @PostMapping("/move")
-    public ApiResponse<Boolean> move(@RequestBody @Valid MoveDocRequest request) {
+    public ApiResponse<Void> move(@RequestBody @Valid MoveDocRequest request) {
         docService.move(request.getId(), request.getParentDocId(), request.getBeforeDocId());
-        return ApiResponse.ok(true);
+        return ApiResponse.ok();
     }
 
     @PostMapping("/compact")
-    public ApiResponse<Boolean> compact(@RequestBody @Valid CompactDocRequest request) {
+    public ApiResponse<Void> compact(@RequestBody @Valid CompactDocRequest request) {
         byte[] snapshot;
         try {
             snapshot = Base64.getDecoder().decode(request.getSnapshot());
@@ -86,7 +86,7 @@ public class DocController {
             throw new BusinessException(ErrorCode.BAD_REQUEST);
         }
         docService.compact(request.getId(), snapshot);
-        return ApiResponse.ok(true);
+        return ApiResponse.ok();
     }
 
     @PostMapping("/share/create")
@@ -97,7 +97,7 @@ public class DocController {
     @PostMapping("/share/revoke")
     public ApiResponse<Void> revokeShare(@RequestBody @Valid GetDocRequest request) {
         docService.revokeShareLink(request.getId());
-        return ApiResponse.ok(null);
+        return ApiResponse.ok();
     }
 
     @PostMapping("/share/status")

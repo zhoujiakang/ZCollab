@@ -500,19 +500,20 @@ export default function PageView() {
   const markDirty = useCallback(() => {
     if (!docIdRef.current) return;
     dirtyRef.current = true;
-    setLastEditedAt(new Date());
-    setEditorRevision((value) => value + 1);
-    if (inFlightRef.current) {
-      pendingRef.current = true;
-      setSaveStatus('saving');
-    } else {
-      setSaveStatus('unsaved');
-    }
+    const nextStatus: SaveStatus = inFlightRef.current ? 'saving' : 'unsaved';
+    if (inFlightRef.current) pendingRef.current = true;
     clearSaveTimer();
     timerRef.current = window.setTimeout(() => {
       timerRef.current = null;
       void flushNow();
     }, SAVE_DELAY);
+    // Tiptap/Yjs 可能在 CollabEditor 渲染期间派发 onUpdate，延后通知上层避免跨组件 setState。
+    queueMicrotask(() => {
+      if (!mountedRef.current) return;
+      setLastEditedAt(new Date());
+      setEditorRevision((value) => value + 1);
+      setSaveStatus(nextStatus);
+    });
   }, [clearSaveTimer, flushNow]);
 
   const handleEditorReady = useCallback(() => {

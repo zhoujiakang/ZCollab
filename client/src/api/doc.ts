@@ -1,4 +1,4 @@
-import { apiPost } from './client';
+import { apiPost, apiPostVoid } from './client';
 
 export interface DocSummary {
   id: string;
@@ -58,7 +58,7 @@ export function updateDoc(id: string, values: { title?: string; content?: string
 }
 
 export function deleteDoc(id: string): Promise<void> {
-  return apiPost<boolean>('/doc/delete', { id }).then(() => undefined);
+  return apiPostVoid('/doc/delete', { id });
 }
 
 export interface MoveDocInput {
@@ -68,7 +68,7 @@ export interface MoveDocInput {
 }
 
 export function moveDoc({ id, parentDocId, beforeDocId = null }: MoveDocInput): Promise<void> {
-  return apiPost<boolean>('/doc/move', { id, parentDocId, beforeDocId }).then(() => undefined);
+  return apiPostVoid('/doc/move', { id, parentDocId, beforeDocId });
 }
 
 export function toggleFavorite(id: string): Promise<boolean> {
@@ -80,7 +80,7 @@ export function listFavorites(): Promise<FavoriteDoc[]> {
 }
 
 export function visitDoc(id: string): Promise<void> {
-  return apiPost<boolean>('/doc/visit', { id }).then(() => undefined);
+  return apiPostVoid('/doc/visit', { id });
 }
 
 export function listRecentDocs(): Promise<RecentDoc[]> {

@@ -34,14 +34,14 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ApiResponse<Boolean> logout() {
+    public ApiResponse<Void> logout() {
         authService.logout();
-        return ApiResponse.ok(true);
+        return ApiResponse.ok();
     }
 
     @PostMapping("/password")
-    public ApiResponse<Boolean> changePassword(@RequestBody @Valid PasswordRequest request) {
+    public ApiResponse<Void> changePassword(@RequestBody @Valid PasswordRequest request) {
         authService.changePassword(request);
-        return ApiResponse.ok(true);
+        return ApiResponse.ok();
     }
 }

@@ -8,6 +8,10 @@ public record ApiResponse<T>(int code, String message, T data) {
         return new ApiResponse<>(0, null, data);
     }
 
+    public static ApiResponse<Void> ok() {
+        return new ApiResponse<>(0, null, null);
+    }
+
     public static ApiResponse<Void> fail(ErrorCode errorCode) {
         return fail(errorCode, errorCode.getMessage());
     }

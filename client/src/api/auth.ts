@@ -1,4 +1,4 @@
-import { apiPost } from './client';
+import { apiPost, apiPostVoid } from './client';
 import type { PageParams, PageResponse, WorkspaceSummary } from './workspace';
 
 export interface AuthUser {
@@ -28,7 +28,7 @@ export function register(username: string, password: string, name: string): Prom
 }
 
 export function logout(): Promise<void> {
-  return apiPost<void>('/auth/logout');
+  return apiPostVoid('/auth/logout');
 }
 
 export function fetchMe(params: PageParams = {}): Promise<MeUser> {

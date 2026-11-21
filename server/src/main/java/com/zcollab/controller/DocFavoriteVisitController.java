@@ -34,9 +34,9 @@ public class DocFavoriteVisitController {
     }
 
     @PostMapping("/visit")
-    public ApiResponse<Boolean> visit(@RequestBody @Valid GetDocRequest request) {
+    public ApiResponse<Void> visit(@RequestBody @Valid GetDocRequest request) {
         service.recordVisit(request.getId());
-        return ApiResponse.ok(true);
+        return ApiResponse.ok();
     }
 
     @PostMapping("/recent")
