@@ -25,19 +25,20 @@ public interface DocMapper extends BaseMapper<Doc> {
     @Select("""
             SELECT id, title, content_text,
                    CASE
-                       WHEN title ILIKE '%' || #{keyword} || '%' THEN 100 + similarity(title, #{keyword})
+                       WHEN title ILIKE '%' || #{likeKeyword} || '%' THEN 100 + similarity(title, #{keyword})
                        ELSE similarity(content_text, #{keyword})
                    END AS score
             FROM doc
             WHERE workspace_id = #{workspaceId}
               AND deleted_at IS NULL
-              AND (title ILIKE '%' || #{keyword} || '%'
-                   OR content_text ILIKE '%' || #{keyword} || '%')
+              AND (title ILIKE '%' || #{likeKeyword} || '%'
+                   OR content_text ILIKE '%' || #{likeKeyword} || '%')
             ORDER BY score DESC, updated_at DESC
             LIMIT #{limit}
             """)
     List<DocSearchRow> search(@Param("workspaceId") Long workspaceId,
                               @Param("keyword") String keyword,
+                              @Param("likeKeyword") String likeKeyword,
                               @Param("limit") int limit);
 
     @Select("""

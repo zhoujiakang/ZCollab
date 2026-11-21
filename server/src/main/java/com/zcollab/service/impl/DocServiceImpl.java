@@ -60,7 +60,7 @@ public class DocServiceImpl implements DocService {
                 ? DEFAULT_SEARCH_LIMIT
                 : Math.min(Math.max(request.getLimit(), 1), MAX_SEARCH_LIMIT);
         Long workspaceId = currentWorkspaceId();
-        return docMapper.search(workspaceId, keyword, limit).stream()
+        return docMapper.search(workspaceId, keyword, escapeLikeKeyword(keyword), limit).stream()
                 .map(row -> new DocSearchResponse(
                         row.getId(),
                         row.getTitle(),
@@ -170,6 +170,13 @@ public class DocServiceImpl implements DocService {
             throw new BusinessException(ErrorCode.NOT_FOUND);
         }
         return doc;
+    }
+
+    /** LIKE 匹配专用：先转义反斜杠，再转义 % 和 _；其他用途仍使用原始关键词。 */
+    public static String escapeLikeKeyword(String keyword) {
+        return keyword.replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     /** 正文命中时截取前后各 30 个字符，并用 \u0001 包住命中词供前端加粗。 */
