@@ -144,6 +144,10 @@ public class DocServiceImpl implements DocService {
         if (hasText) {
             doc.setContentText(request.getText());
         }
+        // updated_at 由数据库触发器刷新，重新读取实体才能把新的时间带进响应。
+        if (hasTitle || hasContent || hasText) {
+            doc = requireDoc(request.getId(), workspaceId);
+        }
         return toResponse(doc);
     }
 
@@ -267,6 +271,6 @@ public class DocServiceImpl implements DocService {
 
     private DocResponse toResponse(Doc doc) {
         return new DocResponse(doc.getId(), doc.getParentDocId(), doc.getTitle(),
-                doc.getContent(), doc.getContentText() == null ? "" : doc.getContentText());
+                doc.getContent(), doc.getContentText() == null ? "" : doc.getContentText(), doc.getUpdatedAt());
     }
 }

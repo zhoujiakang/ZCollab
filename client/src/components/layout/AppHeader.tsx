@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ActionIcon, Menu, Tooltip, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
 import {
   IconChevronDown,
   IconLayoutSidebar,
+  IconLayoutSidebarRight,
   IconLogout,
   IconMoon,
   IconSearch,
@@ -11,6 +12,7 @@ import {
 } from '@tabler/icons-react';
 import { useAuth } from '../../context/AuthContext';
 import { useOpenCommandPalette } from '../../context/CommandPaletteContext';
+import { isDocPagePath, useAside } from './AsideContext';
 import {
   COLOR_SCHEME_STORAGE_KEY,
   type StoredColorScheme,
@@ -24,6 +26,9 @@ interface AppHeaderProps {
 export default function AppHeader({ onToggleSidebar }: AppHeaderProps) {
   const openCommandPalette = useOpenCommandPalette();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { opened: asideOpened, toggle: toggleAside } = useAside();
+  const isDocRoute = isDocPagePath(location.pathname);
   const { user, logout } = useAuth();
   const { setColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme();
@@ -81,6 +86,19 @@ export default function AppHeader({ onToggleSidebar }: AppHeaderProps) {
       </div>
 
       <div className={classes.right}>
+        {isDocRoute && (
+          <Tooltip label={asideOpened ? '收起右侧栏' : '展开右侧栏'} withArrow>
+            <ActionIcon
+              variant={asideOpened ? 'filled' : 'subtle'}
+              size="sm"
+              aria-label="切换右侧栏"
+              aria-pressed={asideOpened}
+              onClick={toggleAside}
+            >
+              <IconLayoutSidebarRight size={18} stroke={1.7} />
+            </ActionIcon>
+          </Tooltip>
+        )}
         <Tooltip label={`主题：${mode === 'auto' ? '跟随系统' : mode === 'light' ? '浅色' : '深色'}（点击切换）`} withArrow>
           <ActionIcon variant="subtle" size="sm" aria-label="切换主题" onClick={cycleColorScheme}>
             {computedColorScheme === 'dark' ? <IconSun size={18} stroke={1.7} /> : <IconMoon size={18} stroke={1.7} />}

@@ -12,6 +12,7 @@ export interface Doc {
   title: string;
   content: string;
   contentText: string;
+  updatedAt: string | null;
 }
 
 export interface DocSearchResult {

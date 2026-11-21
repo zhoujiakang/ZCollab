@@ -28,6 +28,23 @@
   font-weight: 600;
   letter-spacing: -0.01em;
   margin: 1.2em 0 0.5em;
+  scroll-margin-top: 100px;
+}
+
+.editor :global(.zcollab-editor h1[data-outline-active]),
+.editor :global(.zcollab-editor h2[data-outline-active]),
+.editor :global(.zcollab-editor h3[data-outline-active]) {
+  background-color: var(--mantine-color-yellow-1);
+  box-shadow: 0 0 0 6px var(--mantine-color-yellow-1);
+  border-radius: 2px;
+  transition: background-color 300ms ease, box-shadow 300ms ease;
+}
+
+[data-mantine-color-scheme='dark'] .editor :global(.zcollab-editor h1[data-outline-active]),
+[data-mantine-color-scheme='dark'] .editor :global(.zcollab-editor h2[data-outline-active]),
+[data-mantine-color-scheme='dark'] .editor :global(.zcollab-editor h3[data-outline-active]) {
+  background-color: var(--mantine-color-dark-5);
+  box-shadow: 0 0 0 6px var(--mantine-color-dark-5);
 }
 
 .editor :global(.zcollab-editor h1) { font-size: 1.875rem; }

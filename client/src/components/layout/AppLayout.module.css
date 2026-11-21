@@ -9,6 +9,11 @@
   overflow: hidden;
 }
 
+.aside {
+  background-color: var(--zc-sidebar-bg);
+  border-left: 1px solid var(--zc-border);
+}
+
 .main {
   background-color: var(--zc-main-bg);
   min-height: 0;

@@ -32,6 +32,7 @@ import { useCollabDoc, type CollabStatus } from '../../collab/useCollabDoc';
 import { hasDocContent, parseDocContent } from '../../lib/docContent';
 import { getDocPath } from '../../lib/docTree';
 import { recordRecentDoc } from '../../lib/recentDocs';
+import { useAside, type AsideHeading } from '../layout/AsideContext';
 import ShareDialog from '../ShareDialog';
 import editorClasses from './Editor.module.css';
 import classes from './PageView.module.css';
@@ -53,6 +54,7 @@ const SAVE_COLORS: Record<SaveStatus, string> = {
 };
 
 const SAVE_DELAY = 1500;
+const OUTLINE_TOP_OFFSET = 110;
 
 const CONNECTION_LABELS: Record<CollabStatus, string> = {
   connecting: '协同连接中…',
@@ -104,7 +106,14 @@ interface AwarenessUser {
   color: string;
 }
 
-function OnlineUsers({ provider }: { provider: WebsocketProvider }) {
+interface OutlineState {
+  headings: AsideHeading[];
+  chars: number;
+  charsWithSpace: number;
+  paragraphs: number;
+}
+
+function useAwarenessUsers(provider: WebsocketProvider): AwarenessUser[] {
   const [users, setUsers] = useState<AwarenessUser[]>([]);
 
   useEffect(() => {
@@ -127,6 +136,46 @@ function OnlineUsers({ provider }: { provider: WebsocketProvider }) {
     };
   }, [provider]);
 
+  return users;
+}
+
+/** 在线人数只在人数变化时更新，避免光标 awareness 更新引起正文重渲染。 */
+function useAwarenessCount(provider: WebsocketProvider | null): number {
+  const [count, setCount] = useState(0);
+  const countRef = useRef(0);
+
+  useEffect(() => {
+    if (!provider) {
+      countRef.current = 0;
+      setCount(0);
+      return;
+    }
+    const refresh = () => {
+      let next = 0;
+      provider.awareness.getStates().forEach((state) => {
+        const user = state?.user as { name?: string } | undefined;
+        if (user?.name) next += 1;
+      });
+      if (next === countRef.current) return;
+      countRef.current = next;
+      queueMicrotask(() => setCount(next));
+    };
+    refresh();
+    provider.awareness.on('change', refresh);
+    provider.awareness.on('update', refresh);
+    return () => {
+      provider.awareness.off('change', refresh);
+      provider.awareness.off('update', refresh);
+      countRef.current = 0;
+      setCount(0);
+    };
+  }, [provider]);
+
+  return count;
+}
+
+function OnlineUsers({ provider }: { provider: WebsocketProvider }) {
+  const users = useAwarenessUsers(provider);
   return (
     <span className={classes.onlineUsers}>
       <Text size="sm" c="dimmed">在线 {users.length}</Text>
@@ -364,6 +413,13 @@ export default function PageView() {
   const [shareOpened, setShareOpened] = useState(false);
 
   const { ydoc, provider, status } = useCollabDoc(docId ?? null);
+  const { publish } = useAside();
+  const online = useAwarenessCount(provider);
+
+  const [outline, setOutline] = useState<OutlineState>({ headings: [], chars: 0, charsWithSpace: 0, paragraphs: 0 });
+  const [editorRevision, setEditorRevision] = useState(0);
+  const [editorReady, setEditorReady] = useState(false);
+  const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
 
   const titleRef = useRef('');
   const editorRef = useRef<Editor | null>(null);
@@ -410,6 +466,7 @@ export default function PageView() {
       .then((doc) => {
         if (!isCurrentDoc(id)) return;
         setDocs((prev) => prev.map((item) => (item.id === doc.id ? { ...item, title: doc.title } : item)));
+        setSelected((prev) => (prev && prev.id === doc.id ? { ...prev, ...doc } : prev));
         setSaveStatus(dirtyRef.current ? (pendingRef.current ? 'saving' : 'unsaved') : 'saved');
       })
       .catch((error) => {
@@ -441,6 +498,7 @@ export default function PageView() {
     if (!docIdRef.current) return;
     dirtyRef.current = true;
     setLastEditedAt(new Date());
+    setEditorRevision((value) => value + 1);
     if (inFlightRef.current) {
       pendingRef.current = true;
       setSaveStatus('saving');
@@ -455,6 +513,8 @@ export default function PageView() {
   }, [clearSaveTimer, flushNow]);
 
   const handleEditorReady = useCallback(() => {
+    setEditorReady(true);
+    setEditorRevision((value) => value + 1);
     if (!needsIndexRef.current) return;
     needsIndexRef.current = false;
     markDirty();
@@ -486,9 +546,13 @@ export default function PageView() {
     setSelected(doc);
     setTitle(doc.title);
     setSaveStatus('saved');
-    setLastEditedAt(new Date());
+    setLastEditedAt(doc.updatedAt ? new Date(doc.updatedAt) : new Date());
+    setOutline({ headings: [], chars: 0, charsWithSpace: 0, paragraphs: 0 });
+    setActiveHeadingId(null);
+    setEditorReady(false);
+    publish(null);
     recordRecentDoc(workspace, { id: doc.id, title: doc.title });
-  }, [clearSaveTimer, workspace]);
+  }, [clearSaveTimer, publish, workspace]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -553,6 +617,85 @@ export default function PageView() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [flushNow]);
+
+  useEffect(() => () => publish(null), [publish]);
+
+  // 目录与统计一律从编辑器当前状态采集，协同修改也会重新计算。
+  useEffect(() => {
+    const current = editorRef.current;
+    if (!editorReady || !current) return;
+    const headings: AsideHeading[] = [];
+    current.state.doc.descendants((node) => {
+      if (node.type.name === 'heading') {
+        headings.push({
+          id: `h${headings.length}`,
+          level: Number(node.attrs.level) || 1,
+          text: node.textContent || '无标题',
+        });
+      }
+    });
+    const text = current.getText();
+    setOutline({
+      headings,
+      chars: text.replace(/\s/g, '').length,
+      charsWithSpace: text.length,
+      paragraphs: text.split(/\n\s*\n/).filter((part) => part.trim().length > 0).length,
+    });
+  }, [editorReady, editorRevision]);
+
+  useEffect(() => {
+    const current = editorRef.current;
+    if (!editorReady || !current) return;
+    const elements = Array.from(current.view.dom.querySelectorAll<HTMLElement>('h1, h2, h3'));
+    if (!elements.length) {
+      setActiveHeadingId(null);
+      return;
+    }
+    const refreshActive = () => {
+      let index = 0;
+      elements.forEach((element, i) => {
+        if (element.getBoundingClientRect().top <= OUTLINE_TOP_OFFSET) index = i;
+      });
+      setActiveHeadingId(`h${index}`);
+    };
+    const observer = new IntersectionObserver(refreshActive, {
+      root: null,
+      rootMargin: `-${OUTLINE_TOP_OFFSET}px 0px -70% 0px`,
+      threshold: 0,
+    });
+    elements.forEach((element) => observer.observe(element));
+    refreshActive();
+    return () => observer.disconnect();
+  }, [editorReady, editorRevision, outline.headings.length]);
+
+  const onJump = useCallback((id: string) => {
+    const current = editorRef.current;
+    if (!current) return;
+    const index = Number(id.slice(1));
+    if (!Number.isInteger(index) || index < 0) return;
+    const target = current.view.dom.querySelectorAll<HTMLElement>('h1, h2, h3')[index];
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    target.setAttribute('data-outline-active', '');
+    window.setTimeout(() => target.removeAttribute('data-outline-active'), 300);
+  }, []);
+
+  useEffect(() => {
+    if (!editorReady || !selected || !docId) return;
+    publish({
+      title: title || '无标题',
+      updatedAt: selected.updatedAt,
+      headings: outline.headings,
+      activeHeadingId,
+      meta: {
+        chars: outline.chars,
+        charsWithSpace: outline.charsWithSpace,
+        paragraphs: outline.paragraphs,
+        online,
+      },
+      onJump,
+    });
+  }, [editorReady, selected, docId, title, outline, activeHeadingId, online, onJump, publish]);
 
   const path = useMemo(() => getDocPath(docs, docId), [docs, docId]);
   const crumbs = path.length
