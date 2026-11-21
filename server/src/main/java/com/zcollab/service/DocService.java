@@ -27,6 +27,8 @@ public interface DocService {
 
     void delete(Long id);
 
+    void move(Long id, Long parentId);
+
     void compact(Long id, byte[] snapshot);
 
     ShareCreateResponse createShareLink(Long id);

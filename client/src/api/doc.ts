@@ -49,3 +49,7 @@ export function updateDoc(id: string, values: { title?: string; content?: string
 export function deleteDoc(id: string): Promise<void> {
   return apiPost<boolean>('/doc/delete', { id }).then(() => undefined);
 }
+
+export function moveDoc(id: string, parentDocId: string | null): Promise<void> {
+  return apiPost<boolean>('/doc/move', { id, parentDocId }).then(() => undefined);
+}

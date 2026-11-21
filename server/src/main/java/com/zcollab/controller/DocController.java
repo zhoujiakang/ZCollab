@@ -5,6 +5,7 @@ import com.zcollab.dto.doc.CompactDocRequest;
 import com.zcollab.dto.doc.CreateDocRequest;
 import com.zcollab.dto.doc.DeleteDocRequest;
 import com.zcollab.dto.doc.GetDocRequest;
+import com.zcollab.dto.doc.MoveDocRequest;
 import com.zcollab.dto.doc.SearchDocRequest;
 import com.zcollab.dto.doc.UpdateDocRequest;
 import com.zcollab.service.DocService;
@@ -67,6 +68,12 @@ public class DocController {
     @PostMapping("/delete")
     public ApiResponse<Boolean> delete(@RequestBody @Valid DeleteDocRequest request) {
         docService.delete(request.getId());
+        return ApiResponse.ok(true);
+    }
+
+    @PostMapping("/move")
+    public ApiResponse<Boolean> move(@RequestBody @Valid MoveDocRequest request) {
+        docService.move(request.getId(), request.getParentDocId());
         return ApiResponse.ok(true);
     }
 

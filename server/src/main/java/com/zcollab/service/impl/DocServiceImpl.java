@@ -28,6 +28,7 @@ import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 @Service
 public class DocServiceImpl implements DocService {
@@ -165,6 +166,30 @@ public class DocServiceImpl implements DocService {
                 .eq(Doc::getWorkspaceId, workspaceId)
                 .isNull(Doc::getDeletedAt)
                 .set(Doc::getDeletedAt, OffsetDateTime.now()));
+    }
+
+    @Override
+    @Transactional
+    public void move(Long id, Long parentId) {
+        Long workspaceId = currentWorkspaceId();
+        Doc doc = requireDoc(id, workspaceId);
+        if (parentId != null) {
+            requireDoc(parentId, workspaceId);
+            if (docMapper.selectDescendantIds(id, workspaceId).contains(parentId)) {
+                String message = parentId.equals(id)
+                        ? "不能移动到自身"
+                        : "不能移动到自己的子页面下";
+                throw new BusinessException(ErrorCode.BAD_REQUEST, message);
+            }
+        }
+        if (Objects.equals(doc.getParentDocId(), parentId)) {
+            return;
+        }
+        docMapper.update(null, new LambdaUpdateWrapper<Doc>()
+                .eq(Doc::getId, doc.getId())
+                .eq(Doc::getWorkspaceId, workspaceId)
+                .isNull(Doc::getDeletedAt)
+                .set(Doc::getParentDocId, parentId));
     }
 
     @Override

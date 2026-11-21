@@ -10,6 +10,7 @@ import {
 import { ActionIcon, Menu, Text, TextInput, Tooltip } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
+  IconArrowsMove,
   IconChevronRight,
   IconDots,
   IconFileText,
@@ -21,6 +22,7 @@ import {
 import { updateDoc, type DocSummary } from '../../api/doc';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { buildTree, getDocPath, type TreeNode } from '../../lib/docTree';
+import MoveDocDialog from './MoveDocDialog';
 import classes from './PageTree.module.css';
 
 interface PageTreeProps {
@@ -91,6 +93,7 @@ export default function PageTree({
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [creatingId, setCreatingId] = useState<string | null>(null);
+  const [movingDoc, setMovingDoc] = useState<DocSummary | null>(null);
 
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
   const renameInputRef = useRef<HTMLInputElement | null>(null);
@@ -210,6 +213,15 @@ export default function PageTree({
       setCreatingId(null);
     }
   }, [create, creatingId, onSelect, updateExpanded]);
+
+  const handleMoved = useCallback((movedId: string, parentDocId: string | null) => {
+    setDocs((prev) => prev.map((doc) => (
+      doc.id === movedId ? { ...doc, parentDocId } : doc
+    )));
+    if (parentDocId) {
+      updateExpanded((ids) => (ids.includes(parentDocId) ? ids : [...ids, parentDocId]));
+    }
+  }, [setDocs, updateExpanded]);
 
   const handleRowKeyDown = useCallback((
     event: ReactKeyboardEvent<HTMLDivElement>,
@@ -414,6 +426,17 @@ export default function PageTree({
             重命名
           </Menu.Item>
           <Menu.Item
+            leftSection={<IconArrowsMove size={15} stroke={1.7} />}
+            disabled={!menuDoc}
+            onClick={() => {
+              if (!menuDoc) return;
+              setMenuState(null);
+              setMovingDoc(menuDoc);
+            }}
+          >
+            移动到…
+          </Menu.Item>
+          <Menu.Item
             leftSection={<IconLink size={15} stroke={1.7} />}
             disabled={!menuDoc}
             onClick={() => {
@@ -437,6 +460,15 @@ export default function PageTree({
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
+      {movingDoc && (
+        <MoveDocDialog
+          opened
+          doc={movingDoc}
+          docs={docs}
+          onClose={() => setMovingDoc(null)}
+          onMoved={handleMoved}
+        />
+      )}
     </>
   );
 }
