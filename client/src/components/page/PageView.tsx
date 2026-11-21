@@ -31,6 +31,7 @@ import { useWorkspace } from '../../context/WorkspaceContext';
 import { useCollabDoc, type CollabStatus } from '../../collab/useCollabDoc';
 import { hasDocContent, parseDocContent } from '../../lib/docContent';
 import { getDocPath } from '../../lib/docTree';
+import { recordRecentDoc } from '../../lib/recentDocs';
 import ShareDialog from '../ShareDialog';
 import editorClasses from './Editor.module.css';
 import classes from './PageView.module.css';
@@ -486,7 +487,8 @@ export default function PageView() {
     setTitle(doc.title);
     setSaveStatus('saved');
     setLastEditedAt(new Date());
-  }, [clearSaveTimer]);
+    recordRecentDoc(workspace, { id: doc.id, title: doc.title });
+  }, [clearSaveTimer, workspace]);
 
   useEffect(() => {
     mountedRef.current = true;

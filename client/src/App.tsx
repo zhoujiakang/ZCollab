@@ -3,9 +3,10 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigat
 import { Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import AppLayout from './components/layout/AppLayout';
+import CommandPaletteHost from './components/layout/CommandPaletteHost';
 import SharePage from './components/SharePage';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { WorkspaceProvider } from './context/WorkspaceContext';
+import { WorkspaceBridgeProvider, WorkspaceProvider } from './context/WorkspaceContext';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
@@ -126,7 +127,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <WorkspaceBridgeProvider>
+          <CommandPaletteHost>
+            <AppRoutes />
+          </CommandPaletteHost>
+        </WorkspaceBridgeProvider>
       </AuthProvider>
     </BrowserRouter>
   );

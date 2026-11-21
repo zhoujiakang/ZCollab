@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ActionIcon, Menu, Tooltip, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
 import {
   IconChevronDown,
@@ -10,11 +10,11 @@ import {
   IconSun,
 } from '@tabler/icons-react';
 import { useAuth } from '../../context/AuthContext';
+import { useOpenCommandPalette } from '../../context/CommandPaletteContext';
 import {
   COLOR_SCHEME_STORAGE_KEY,
   type StoredColorScheme,
 } from '../../theme';
-import SearchDialog from './SearchDialog';
 import classes from './AppHeader.module.css';
 
 interface AppHeaderProps {
@@ -22,8 +22,8 @@ interface AppHeaderProps {
 }
 
 export default function AppHeader({ onToggleSidebar }: AppHeaderProps) {
+  const openCommandPalette = useOpenCommandPalette();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, logout } = useAuth();
   const { setColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme();
@@ -36,7 +36,6 @@ export default function AppHeader({ onToggleSidebar }: AppHeaderProps) {
     }
     return 'auto';
   });
-  const [searchOpened, setSearchOpened] = useState(false);
 
   const cycleColorScheme = () => {
     const next: StoredColorScheme = mode === 'auto' ? 'light' : mode === 'light' ? 'dark' : 'auto';
@@ -58,19 +57,6 @@ export default function AppHeader({ onToggleSidebar }: AppHeaderProps) {
     }
   };
 
-  const openSearch = () => {
-    if (!user?.activeWorkspace) {
-      navigate('/home');
-      return;
-    }
-    setSearchOpened(true);
-  };
-
-  const searchTargetId = () => {
-    const match = /^\/w\/([^/]+)/.exec(location.pathname);
-    return match ? decodeURIComponent(match[1]) : user?.activeWorkspace?.id;
-  };
-
   return (
     <div className={classes.header}>
       <div className={classes.left}>
@@ -88,7 +74,7 @@ export default function AppHeader({ onToggleSidebar }: AppHeaderProps) {
       </div>
 
       <div className={classes.center}>
-        <button type="button" className={classes.searchButton} onClick={openSearch}>
+        <button type="button" className={classes.searchButton} onClick={openCommandPalette}>
           <IconSearch size={16} stroke={1.7} />
           <span className={classes.searchText}>搜索文档</span>
         </button>
@@ -115,15 +101,6 @@ export default function AppHeader({ onToggleSidebar }: AppHeaderProps) {
           </Menu.Dropdown>
         </Menu>
       </div>
-
-      <SearchDialog
-        opened={searchOpened}
-        onClose={() => setSearchOpened(false)}
-        onSelect={(docId) => {
-          const workspaceId = searchTargetId();
-          if (workspaceId) navigate(`/w/${workspaceId}/p/${docId}`);
-        }}
-      />
     </div>
   );
 }

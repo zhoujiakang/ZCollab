@@ -3,15 +3,16 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ActionIcon, Menu, Text, Tooltip, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
+  IconChevronsDown,
   IconHome,
   IconPlus,
   IconSearch,
   IconSelector,
 } from '@tabler/icons-react';
 import { useAuth } from '../../context/AuthContext';
+import { useOpenCommandPalette } from '../../context/CommandPaletteContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import PageTree from '../page/PageTree';
-import SearchDialog from './SearchDialog';
 import classes from './Sidebar.module.css';
 
 interface MenuEntryProps {
@@ -31,11 +32,12 @@ function MenuEntry({ label, icon, active, onClick }: MenuEntryProps) {
 }
 
 export default function WorkspaceSidebar() {
+  const openCommandPalette = useOpenCommandPalette();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const { workspaceId, docs, loadingDocs, create, remove, flushPendingSave } = useWorkspace();
-  const [searchOpened, setSearchOpened] = useState(false);
+  const [collapseAllSignal, setCollapseAllSignal] = useState(0);
   const [busy, setBusy] = useState(false);
 
   const currentDocId = /^\/w\/[^/]+\/p\/([^/]+)/.exec(location.pathname)?.[1];
@@ -114,7 +116,7 @@ export default function WorkspaceSidebar() {
           <MenuEntry
             label="搜索"
             icon={<IconSearch size={18} stroke={1.7} />}
-            onClick={() => setSearchOpened(true)}
+            onClick={openCommandPalette}
           />
           <MenuEntry
             label="新建页面"
@@ -127,23 +129,36 @@ export default function WorkspaceSidebar() {
       <div className={`${classes.section} ${classes.pagesSection}`}>
         <div className={classes.pagesHeader}>
           <Text size="xs" fw={500} c="dimmed">页面</Text>
-          <Tooltip label="新建页面" withArrow>
-            <ActionIcon
-              variant="default"
-              size={18}
-              aria-label="新建页面"
-              loading={busy}
-              onClick={() => void handleCreate()}
-            >
-              <IconPlus size={13} stroke={1.7} />
-            </ActionIcon>
-          </Tooltip>
+          <div className={classes.pagesHeaderActions}>
+            <Tooltip label="全部折叠" withArrow>
+              <ActionIcon
+                variant="default"
+                size={18}
+                aria-label="全部折叠"
+                onClick={() => setCollapseAllSignal((signal) => signal + 1)}
+              >
+                <IconChevronsDown size={13} stroke={1.7} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="新建页面" withArrow>
+              <ActionIcon
+                variant="default"
+                size={18}
+                aria-label="新建页面"
+                loading={busy}
+                onClick={() => void handleCreate()}
+              >
+                <IconPlus size={13} stroke={1.7} />
+              </ActionIcon>
+            </Tooltip>
+          </div>
         </div>
         <div className={classes.pages}>
           <PageTree
             docs={docs}
             currentDocId={currentDocId}
             loading={loadingDocs}
+            collapseAllSignal={collapseAllSignal}
             onSelect={(docId) => {
               if (docId === currentDocId) return;
               void flushPendingSave().then(() => navigate(`/w/${workspaceId}/p/${docId}`));
@@ -152,12 +167,6 @@ export default function WorkspaceSidebar() {
           />
         </div>
       </div>
-
-      <SearchDialog
-        opened={searchOpened}
-        onClose={() => setSearchOpened(false)}
-        onSelect={(docId) => navigate(`/w/${workspaceId}/p/${docId}`)}
-      />
     </div>
   );
 }

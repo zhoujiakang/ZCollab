@@ -83,6 +83,12 @@
   margin-bottom: 5px;
 }
 
+.pagesHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .pages {
   flex: 1;
   min-height: 0;

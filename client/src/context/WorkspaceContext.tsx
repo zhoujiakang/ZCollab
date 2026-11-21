@@ -14,7 +14,7 @@ import { notifications } from '@mantine/notifications';
 import { createDoc, deleteDoc, listDocs, type Doc, type DocSummary } from '../api/doc';
 import { collectRemoved } from '../lib/docTree';
 
-interface WorkspaceContextValue {
+export interface WorkspaceContextValue {
   workspaceId: string;
   docs: DocSummary[];
   loadingDocs: boolean;
@@ -28,6 +28,28 @@ interface WorkspaceContextValue {
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
+interface WorkspaceBridgeValue {
+  workspace: WorkspaceContextValue | null;
+  setWorkspace: (value: WorkspaceContextValue | null) => void;
+}
+
+const WorkspaceBridgeContext = createContext<WorkspaceBridgeValue | null>(null);
+
+export function WorkspaceBridgeProvider({ children }: { children: ReactNode }) {
+  const [workspace, setWorkspaceState] = useState<WorkspaceContextValue | null>(null);
+  const setWorkspace = useCallback((value: WorkspaceContextValue | null) => {
+    setWorkspaceState(value);
+  }, []);
+  const value = useMemo<WorkspaceBridgeValue>(() => ({ workspace, setWorkspace }), [workspace, setWorkspace]);
+  return <WorkspaceBridgeContext.Provider value={value}>{children}</WorkspaceBridgeContext.Provider>;
+}
+
+export function useWorkspaceBridge() {
+  const context = useContext(WorkspaceBridgeContext);
+  if (!context) throw new Error('useWorkspaceBridge 必须在 WorkspaceBridgeProvider 内使用');
+  return context;
+}
+
 function notifyError(error: unknown) {
   notifications.show({
     color: 'red',
@@ -37,6 +59,7 @@ function notifyError(error: unknown) {
 }
 
 export function WorkspaceProvider({ workspaceId, children }: { workspaceId: string; children: ReactNode }) {
+  const { setWorkspace } = useWorkspaceBridge();
   const [docs, setDocs] = useState<DocSummary[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
   const flushRef = useRef<() => Promise<void>>(() => Promise.resolve());
@@ -102,6 +125,12 @@ export function WorkspaceProvider({ workspaceId, children }: { workspaceId: stri
     [workspaceId, docs, loadingDocs, reloadDocs, registerFlush, flushPendingSave, create, remove],
   );
 
+  useEffect(() => {
+    setWorkspace(value);
+  }, [setWorkspace, value]);
+
+  useEffect(() => () => setWorkspace(null), [setWorkspace]);
+
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
 
@@ -109,4 +138,8 @@ export function useWorkspace() {
   const context = useContext(WorkspaceContext);
   if (!context) throw new Error('useWorkspace 必须在 WorkspaceProvider 内使用');
   return context;
+}
+
+export function useOptionalWorkspace() {
+  return useContext(WorkspaceContext);
 }

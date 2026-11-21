@@ -10,7 +10,7 @@
   gap: 4px;
   width: 100%;
   min-height: 24px;
-  padding: 8px 8px;
+  padding: 6px 8px;
   padding-left: calc(8px + var(--indent, 0px));
   border: 0;
   border-radius: var(--mantine-radius-sm);
@@ -33,6 +33,39 @@
   background-color: var(--zc-selected);
 }
 
+.contextActive,
+.contextActive:hover {
+  background-color: var(--zc-selected);
+  outline: 1px solid var(--zc-border);
+}
+
+.chevron,
+.chevronPlaceholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.chevron {
+  padding: 0;
+  border: 0;
+  border-radius: var(--mantine-radius-xs);
+  background: transparent;
+  color: var(--zc-icon);
+  cursor: pointer;
+}
+
+.chevron:hover {
+  background-color: var(--zc-hover);
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
 .icon {
   display: inline-flex;
   align-items: center;
@@ -48,13 +81,29 @@
   white-space: nowrap;
 }
 
-.delete {
-  opacity: 0;
-  flex-shrink: 0;
+.rename {
+  flex: 1;
+  min-width: 0;
 }
 
-.row:hover .delete,
-.row:focus-within .delete {
+.renameInput {
+  height: 22px;
+  min-height: 22px;
+  padding-inline: 6px;
+  font-size: var(--mantine-font-size-xs);
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.row:hover .actions,
+.row:focus-within .actions,
+.contextActive .actions {
   opacity: 1;
 }
 
@@ -63,4 +112,11 @@
   color: var(--mantine-color-dimmed);
   font-size: var(--mantine-font-size-xs);
   text-align: center;
+}
+
+.menuAnchor {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
 }
