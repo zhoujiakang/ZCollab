@@ -1,0 +1,48 @@
+import { createTheme, type MantineColorsTuple } from '@mantine/core';
+
+const blue: MantineColorsTuple = [
+  '#e7f3ff',
+  '#d0e4ff',
+  '#a1c6fa',
+  '#6ea6f6',
+  '#458bf2',
+  '#2b7af1',
+  '#0b60d8',
+  '#1b72f2',
+  '#0056c1',
+  '#004aac',
+];
+
+const red: MantineColorsTuple = [
+  '#ffebeb',
+  '#fad7d7',
+  '#eeadad',
+  '#e3807f',
+  '#da5a59',
+  '#d54241',
+  '#d43535',
+  '#bc2727',
+  '#a82022',
+  '#93151b',
+];
+
+export const theme = createTheme({
+  colors: { blue, red },
+  primaryColor: 'blue',
+  primaryShade: 5,
+  defaultRadius: 'sm',
+});
+
+export const COLOR_SCHEME_STORAGE_KEY = 'zcollab-color-scheme';
+
+export type StoredColorScheme = 'auto' | 'light' | 'dark';
+
+export function readStoredColorScheme(): StoredColorScheme {
+  try {
+    const stored = window.localStorage.getItem(COLOR_SCHEME_STORAGE_KEY);
+    if (stored === 'auto' || stored === 'light' || stored === 'dark') return stored;
+  } catch {
+    // 隐私模式下 localStorage 可能不可用
+  }
+  return 'auto';
+}

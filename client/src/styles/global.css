@@ -1,0 +1,41 @@
+:root {
+  --zc-sidebar-bg: #f6f7f9;
+  --zc-main-bg: var(--mantine-color-white);
+  --zc-border: var(--mantine-color-gray-3);
+  --zc-hover: var(--mantine-color-gray-2);
+  --zc-tree-hover: var(--mantine-color-gray-0);
+  --zc-selected: var(--mantine-color-gray-2);
+  --zc-text: var(--mantine-color-gray-7);
+  --zc-icon: var(--mantine-color-gray-6);
+  --zc-code-bg: var(--mantine-color-gray-1);
+  --zc-quote-border: var(--mantine-color-gray-4);
+}
+
+[data-mantine-color-scheme='dark'] {
+  --zc-sidebar-bg: var(--mantine-color-dark-8);
+  --zc-main-bg: var(--mantine-color-dark-7);
+  --zc-border: var(--mantine-color-dark-4);
+  --zc-hover: var(--mantine-color-dark-6);
+  --zc-tree-hover: var(--mantine-color-dark-6);
+  --zc-selected: var(--mantine-color-dark-6);
+  --zc-text: var(--mantine-color-dark-0);
+  --zc-icon: var(--mantine-color-dark-2);
+  --zc-code-bg: var(--mantine-color-dark-8);
+  --zc-quote-border: var(--mantine-color-dark-4);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: var(--zc-main-bg);
+  color: var(--mantine-color-text);
+}

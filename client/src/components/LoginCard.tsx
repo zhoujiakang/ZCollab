@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Button, Center, Container, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Box, Button, Container, PasswordInput, Text, TextInput, Title } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import type { RegisteredUser } from '../api/auth';
-import { pageStyle } from './pageStyle';
+import AuthLayout from './auth/AuthLayout';
+import classes from './auth/auth.module.css';
 
 type Mode = 'login' | 'register';
 
@@ -63,83 +64,83 @@ export default function LoginCard({ onLogin, onRegister }: LoginCardProps) {
   };
 
   return (
-    <Center mih="100vh" p="md" style={pageStyle}>
-      <Container size="xs" p={0}>
-        <Paper shadow="lg" p="xl" radius="lg" withBorder>
-          <Stack gap="lg">
-            <Stack gap={2} ta="center">
-              <Title order={2} c="teal.8">ZCollab</Title>
-              <Text c="dimmed" size="sm">
-                {mode === 'login' ? '登录后开始协作' : '创建你的账号'}
-              </Text>
-            </Stack>
+    <AuthLayout>
+      <Container size={420} className={classes.container}>
+        <Box p="xl" className={classes.containerBox}>
+          <Title order={2} size="h2" ta="center" fw={500} mb="md">
+            {mode === 'login' ? '登录' : '注册'}
+          </Title>
 
-            {mode === 'login' ? (
-              <form onSubmit={loginForm.onSubmit(handleLogin)}>
-                <Stack gap="md">
-                  <TextInput
-                    label="账号"
-                    placeholder="3-32 位字母、数字、_ 或 -"
-                    autoComplete="username"
-                    {...loginForm.getInputProps('username')}
-                  />
-                  <PasswordInput
-                    label="密码"
-                    placeholder="请输入密码"
-                    autoComplete="current-password"
-                    {...loginForm.getInputProps('password')}
-                  />
-                  <Button type="submit" color="teal" fullWidth loading={busy}>
-                    登录
-                  </Button>
-                </Stack>
-              </form>
-            ) : (
-              <form onSubmit={registerForm.onSubmit(handleRegister)}>
-                <Stack gap="md">
-                  <TextInput
-                    label="账号"
-                    placeholder="3-32 位字母、数字、_ 或 -"
-                    autoComplete="username"
-                    {...registerForm.getInputProps('username')}
-                  />
-                  <TextInput
-                    label="昵称"
-                    placeholder="可留空，默认使用账号"
-                    {...registerForm.getInputProps('name')}
-                  />
-                  <PasswordInput
-                    label="密码"
-                    placeholder="至少 8 位"
-                    autoComplete="new-password"
-                    {...registerForm.getInputProps('password')}
-                  />
-                  <Button type="submit" color="teal" fullWidth loading={busy}>
-                    注册
-                  </Button>
-                </Stack>
-              </form>
-            )}
-
-            <Text ta="center" size="sm" c="dimmed">
-              {mode === 'login' ? '还没有账号？' : '已有账号？'}
-              <Button
-                variant="subtle"
-                size="compact-sm"
-                px={6}
-                color="teal"
-                onClick={() => {
-                  setMode(mode === 'login' ? 'register' : 'login');
-                  loginForm.clearErrors();
-                  registerForm.clearErrors();
-                }}
-              >
-                {mode === 'login' ? '去注册' : '去登录'}
+          {mode === 'login' ? (
+            <form onSubmit={loginForm.onSubmit(handleLogin)}>
+              <TextInput
+                label="账号"
+                placeholder="3-32 位字母、数字、_ 或 -"
+                variant="filled"
+                autoComplete="username"
+                {...loginForm.getInputProps('username')}
+              />
+              <PasswordInput
+                label="密码"
+                placeholder="请输入密码"
+                variant="filled"
+                mt="md"
+                autoComplete="current-password"
+                visibilityToggleButtonProps={{ 'aria-label': '显示 / 隐藏密码' }}
+                {...loginForm.getInputProps('password')}
+              />
+              <Button type="submit" fullWidth mt="md" loading={busy}>
+                登录
               </Button>
-            </Text>
-          </Stack>
-        </Paper>
+            </form>
+          ) : (
+            <form onSubmit={registerForm.onSubmit(handleRegister)}>
+              <TextInput
+                label="账号"
+                placeholder="3-32 位字母、数字、_ 或 -"
+                variant="filled"
+                autoComplete="username"
+                {...registerForm.getInputProps('username')}
+              />
+              <TextInput
+                label="昵称"
+                placeholder="可留空，默认使用账号"
+                variant="filled"
+                mt="md"
+                {...registerForm.getInputProps('name')}
+              />
+              <PasswordInput
+                label="密码"
+                placeholder="至少 8 位"
+                variant="filled"
+                mt="md"
+                autoComplete="new-password"
+                visibilityToggleButtonProps={{ 'aria-label': '显示 / 隐藏密码' }}
+                {...registerForm.getInputProps('password')}
+              />
+              <Button type="submit" fullWidth mt="md" loading={busy}>
+                注册
+              </Button>
+            </form>
+          )}
+
+          <Text ta="center" size="sm" c="dimmed" mt="lg">
+            {mode === 'login' ? '还没有账号？' : '已有账号？'}
+            <Button
+              variant="subtle"
+              size="compact-sm"
+              px={6}
+              onClick={() => {
+                setMode(mode === 'login' ? 'register' : 'login');
+                loginForm.clearErrors();
+                registerForm.clearErrors();
+              }}
+            >
+              {mode === 'login' ? '去注册' : '去登录'}
+            </Button>
+          </Text>
+        </Box>
       </Container>
-    </Center>
+    </AuthLayout>
   );
 }

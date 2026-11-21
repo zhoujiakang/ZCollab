@@ -4,3 +4,6 @@ client/dist/
 docs/
 *.log
 .DS_Store
+.idea/
+.vscode/
+*.iml

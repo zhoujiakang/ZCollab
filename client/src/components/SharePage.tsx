@@ -1,25 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Box, Center, Container, Loader, Paper, Stack, Text, Title } from '@mantine/core';
+import { Center, Container, Loader, Stack, Text } from '@mantine/core';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { getPublicShare, type PublicShareDoc } from '../api/share';
-import { editorStyles, parseDocContent } from '../lib/docContent';
-import { pageStyle } from './pageStyle';
-
-const readonlyStyles = `
-.zcollab-editor[contenteditable="false"] { cursor: default; caret-color: transparent; }
-.zcollab-editor[contenteditable="false"] * { cursor: inherit; }
-`;
-
-export function shareTokenFromPath(pathname: string): string | null {
-  const match = /^\/s\/([^/?#]+)\/?$/.exec(pathname);
-  if (!match) return null;
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return null;
-  }
-}
+import { parseDocContent } from '../lib/docContent';
+import editorClasses from './page/Editor.module.css';
+import classes from './SharePage.module.css';
 
 function ReadOnlyBody({ content }: { content: string }) {
   const editor = useEditor({
@@ -30,7 +16,7 @@ function ReadOnlyBody({ content }: { content: string }) {
       attributes: { class: 'zcollab-editor', 'aria-label': '文档正文', tabindex: '-1' },
     },
   });
-  return <EditorContent editor={editor} />;
+  return <div className={`${editorClasses.editor} ${editorClasses.readonly}`}><EditorContent editor={editor} /></div>;
 }
 
 export default function SharePage({ token }: { token: string }) {
@@ -54,30 +40,26 @@ export default function SharePage({ token }: { token: string }) {
   }, [token]);
 
   return (
-    <Box mih="100vh" p={{ base: 'md', sm: 'xl' }} style={pageStyle}>
-      <style>{editorStyles}</style>
-      <style>{readonlyStyles}</style>
-      <Container size="md" py="xl">
-        <Paper shadow="sm" radius="lg" withBorder p={{ base: 'md', sm: 'xl' }}>
+    <div className={classes.page}>
+      <Container className={classes.inner} p={0}>
+        <div className={classes.card}>
           {failed ? (
             <Center py={80}>
               <Text c="dimmed">链接已失效</Text>
             </Center>
           ) : !doc ? (
             <Center py={80}>
-              <Loader color="teal" />
+              <Loader />
             </Center>
           ) : (
             <Stack gap="lg">
-              <Title order={1} style={{ fontSize: 34, fontWeight: 700, wordBreak: 'break-word' }}>
-                {doc.title || '无标题'}
-              </Title>
+              <h1 className={classes.title}>{doc.title || '无标题'}</h1>
               <ReadOnlyBody content={doc.content} />
               <Text size="sm" c="dimmed" ta="center" pt="sm">来自 ZCollab</Text>
             </Stack>
           )}
-        </Paper>
+        </div>
       </Container>
-    </Box>
+    </div>
   );
 }

@@ -1,0 +1,116 @@
+.editor :global(.zcollab-editor) {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: calc(100vh - 200px);
+  padding: 0;
+  background-color: transparent;
+  color: var(--mantine-color-text);
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.75;
+  font-weight: 400;
+  white-space: pre-wrap;
+  outline: none;
+}
+
+.editor :global(.zcollab-editor > :where(:not(:first-child))) {
+  margin-top: 0.75em;
+}
+
+.editor :global(.zcollab-editor p) {
+  margin-top: 0;
+  margin-bottom: 0.75em;
+}
+
+.editor :global(.zcollab-editor h1),
+.editor :global(.zcollab-editor h2),
+.editor :global(.zcollab-editor h3) {
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 1.2em 0 0.5em;
+}
+
+.editor :global(.zcollab-editor h1) { font-size: 1.875rem; }
+.editor :global(.zcollab-editor h2) { font-size: 1.5rem; }
+.editor :global(.zcollab-editor h3) { font-size: 1.25rem; }
+
+.editor :global(.zcollab-editor ul),
+.editor :global(.zcollab-editor ol) {
+  padding-left: 1.5rem;
+  margin: 0.25rem 0;
+}
+
+.editor :global(.zcollab-editor ul p),
+.editor :global(.zcollab-editor ol p) {
+  margin: 0;
+}
+
+.editor :global(.zcollab-editor blockquote) {
+  margin: 0.75em 0;
+  padding: 2px 0 2px 1rem;
+  border-left: 3px solid var(--zc-quote-border);
+  color: var(--mantine-color-dimmed);
+}
+
+.editor :global(.zcollab-editor pre) {
+  margin: 0.75em 0;
+  padding: 12px 14px;
+  border-radius: var(--mantine-radius-sm);
+  background-color: var(--zc-code-bg);
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.editor :global(.zcollab-editor code) {
+  padding: 0.15em 0.35em;
+  border-radius: var(--mantine-radius-sm);
+  background-color: var(--zc-code-bg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.editor :global(.zcollab-editor pre code) {
+  padding: 0;
+  background-color: transparent;
+}
+
+.editor :global(.zcollab-editor hr) {
+  border: 0;
+  border-top: 1px solid var(--zc-border);
+  margin: 1.5em 0;
+}
+
+.readonly :global(.zcollab-editor[contenteditable='false']) {
+  cursor: default;
+  caret-color: transparent;
+}
+
+.readonly :global(.zcollab-editor[contenteditable='false'] *) {
+  cursor: inherit;
+}
+
+.editor :global(.zcollab-editor .collaboration-carets__caret) {
+  position: relative;
+  margin-left: -1px;
+  margin-right: -1px;
+  border-left: 2px solid;
+  border-right: 2px solid;
+  pointer-events: none;
+  word-break: normal;
+}
+
+.editor :global(.zcollab-editor .collaboration-carets__label) {
+  position: absolute;
+  top: -1.5em;
+  left: -1px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 3px 3px 3px 0;
+  user-select: none;
+  white-space: nowrap;
+}

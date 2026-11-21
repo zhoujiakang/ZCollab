@@ -1,0 +1,66 @@
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 24px;
+  padding: 8px 8px;
+  padding-left: calc(8px + var(--indent, 0px));
+  border: 0;
+  border-radius: var(--mantine-radius-sm);
+  background: transparent;
+  color: var(--zc-text);
+  font-family: inherit;
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 500;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:hover {
+  background-color: var(--zc-tree-hover);
+}
+
+.selected,
+.selected:hover {
+  background-color: var(--zc-selected);
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--zc-icon);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete {
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.row:hover .delete,
+.row:focus-within .delete {
+  opacity: 1;
+}
+
+.empty {
+  padding: 16px 8px;
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-xs);
+  text-align: center;
+}

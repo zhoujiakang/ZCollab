@@ -102,7 +102,7 @@ export default function ShareDialog({ opened, onClose, docId }: ShareDialogProps
           <>
             <TextInput label="只读链接" value={url} readOnly aria-label="只读链接" />
             <Group justify="flex-end" gap="sm" wrap="nowrap">
-              <Button variant="light" color="teal" onClick={handleCopy}>复制</Button>
+              <Button variant="light" color="blue" onClick={handleCopy}>复制</Button>
               <Button variant="subtle" color="red" loading={busy} onClick={handleRevoke}>
                 撤销链接
               </Button>
@@ -110,7 +110,7 @@ export default function ShareDialog({ opened, onClose, docId }: ShareDialogProps
           </>
         ) : (
           <Group justify="flex-end">
-            <Button color="teal" loading={busy} onClick={handleCreate}>生成只读链接</Button>
+            <Button color="blue" loading={busy} onClick={handleCreate}>生成只读链接</Button>
           </Group>
         )}
       </Stack>

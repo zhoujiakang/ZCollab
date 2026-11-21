@@ -1,0 +1,15 @@
+.header {
+  background-color: var(--zc-sidebar-bg);
+  border-bottom: 1px solid var(--zc-border);
+}
+
+.navbar {
+  background-color: var(--zc-sidebar-bg);
+  border-right: 1px solid var(--zc-border);
+  overflow: hidden;
+}
+
+.main {
+  background-color: var(--zc-main-bg);
+  min-height: 0;
+}

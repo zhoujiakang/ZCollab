@@ -1,11 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { fetchMe, login, logout, register, type MeUser, type RegisteredUser } from './api/auth';
-import { createWorkspace, switchWorkspace } from './api/workspace';
-import LoginCard from './components/LoginCard';
-import WorkspaceHome from './components/WorkspaceHome';
-import WorkspaceWizard from './components/WorkspaceWizard';
+import AppLayout from './components/layout/AppLayout';
+import SharePage from './components/SharePage';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { WorkspaceProvider } from './context/WorkspaceContext';
+import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import OnboardingPage from './pages/OnboardingPage';
+import WorkspaceOverviewPage from './pages/WorkspaceOverviewPage';
+import PageView from './components/page/PageView';
+
+function FullLoader() {
+  return (
+    <Center h="100vh">
+      <Loader />
+    </Center>
+  );
+}
 
 function notifyError(error: unknown) {
   notifications.show({
@@ -15,122 +28,106 @@ function notifyError(error: unknown) {
   });
 }
 
-export default function App() {
-  const [user, setUser] = useState<MeUser | null>(null);
-  const [checking, setChecking] = useState(true);
-  const [showWizard, setShowWizard] = useState(false);
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <FullLoader />;
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search + location.hash }} />;
+  }
+  const noWorkspace = user.workspaces.items.length === 0;
+  if (noWorkspace && (location.pathname.startsWith('/home') || location.pathname.startsWith('/w/'))) {
+    return <Navigate to="/onboarding" replace />;
+  }
+  return <>{children}</>;
+}
+
+function LoginRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return <FullLoader />;
+  if (!user) return <LoginPage />;
+  return <Navigate
+    to={user.activeWorkspace ? `/w/${user.activeWorkspace.id}` : user.workspaces.items.length ? '/home' : '/onboarding'}
+    replace
+  />;
+}
+
+function ShareRoute() {
+  const { token } = useParams();
+  if (!token) return <Navigate to="/home" replace />;
+  return <SharePage token={token} />;
+}
+
+function WorkspaceRoute() {
+  const { workspaceId } = useParams();
+  const navigate = useNavigate();
+  const { user, switchWorkspace } = useAuth();
+  const [checkedId, setCheckedId] = useState<string | null>(null);
+  const id = workspaceId!;
+  const activeId = user?.activeWorkspace?.id;
 
   useEffect(() => {
+    if (activeId === id) {
+      setCheckedId(id);
+      return;
+    }
+    if (checkedId === id) return;
+    setCheckedId(id);
     let active = true;
-    fetchMe()
+    void switchWorkspace(id)
       .then((me) => {
-        if (active) setUser(me);
+        if (!active) return;
+        if (me.activeWorkspace?.id !== id) {
+          notifyError(new Error('无法进入该工作区'));
+          navigate('/home', { replace: true });
+        }
       })
-      .catch(() => {
-        if (active) setUser(null);
-      })
-      .finally(() => {
-        if (active) setChecking(false);
+      .catch((error) => {
+        if (!active) return;
+        notifyError(error);
+        navigate('/home', { replace: true });
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [id, activeId, checkedId, switchWorkspace, navigate]);
 
-  const refreshMe = async () => {
-    const me = await fetchMe();
-    setUser(me);
-    return me;
-  };
-
-  const handleRefreshUser = async () => {
-    const me = await refreshMe();
-    setShowWizard(me.workspaces.items.length === 0 || !me.activeWorkspace);
-    return me;
-  };
-
-  const handleLogin = async (values: { username: string; password: string }) => {
-    try {
-      await login(values.username, values.password);
-      const me = await refreshMe();
-      setShowWizard(me.workspaces.items.length === 0);
-      notifications.show({ color: 'green', title: '登录成功', message: '欢迎回来' });
-    } catch (error) {
-      notifyError(error);
-    }
-  };
-
-  const handleRegister = async (values: {
-    username: string;
-    password: string;
-    name: string;
-  }): Promise<RegisteredUser | null> => {
-    try {
-      const created = await register(values.username, values.password, values.name);
-      notifications.show({ color: 'green', title: '注册成功', message: '请用刚注册的账号登录' });
-      return created;
-    } catch (error) {
-      notifyError(error);
-      return null;
-    }
-  };
-
-  const handleCreateWorkspace = async (name: string) => {
-    try {
-      await createWorkspace(name);
-      await refreshMe();
-      setShowWizard(false);
-      notifications.show({ color: 'green', title: '创建成功', message: '已进入新工作区' });
-    } catch (error) {
-      notifyError(error);
-    }
-  };
-
-  const handleSwitch = async (id: string) => {
-    try {
-      await switchWorkspace(id);
-      await refreshMe();
-    } catch (error) {
-      notifyError(error);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setUser(null);
-      setShowWizard(false);
-      notifications.show({ color: 'blue', title: '已登出', message: '' });
-    } catch (error) {
-      notifyError(error);
-    }
-  };
-
-  if (checking) {
-    return (
-      <Center h="100vh">
-        <Loader color="teal" />
-      </Center>
-    );
-  }
-
-  if (!user) {
-    return <LoginCard onLogin={handleLogin} onRegister={handleRegister} />;
-  }
-
-  const activeWorkspace = user.activeWorkspace;
-  if (showWizard || user.workspaces.items.length === 0 || !activeWorkspace) {
-    return <WorkspaceWizard onCreate={handleCreateWorkspace} onLogout={handleLogout} />;
-  }
+  if (activeId !== id || checkedId !== id) return <FullLoader />;
 
   return (
-    <WorkspaceHome
-      user={user}
-      activeWorkspace={activeWorkspace}
-      onSwitch={handleSwitch}
-      onRefreshUser={handleRefreshUser}
-      onLogout={handleLogout}
-      onNewWorkspace={() => setShowWizard(true)}
-    />
+    <WorkspaceProvider workspaceId={id}>
+      <Outlet />
+    </WorkspaceProvider>
+  );
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginRoute />} />
+      <Route path="/s/:token" element={<ShareRoute />} />
+      <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
+      </Route>
+      <Route element={<RequireAuth><WorkspaceRoute /></RequireAuth>}>
+        <Route path="/w/:workspaceId" element={<AppLayout />}>
+          <Route index element={<WorkspaceOverviewPage />} />
+          <Route path="p/:docId" element={<PageView />} />
+        </Route>
+      </Route>
+      <Route path="*" element={<Navigate to="/home" replace />} />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

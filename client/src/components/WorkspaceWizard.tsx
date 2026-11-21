@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Button, Center, Container, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Box, Button, Container, Text, TextInput, Title } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { pageStyle } from './pageStyle';
+import AuthLayout from './auth/AuthLayout';
+import classes from './auth/auth.module.css';
 
 interface WorkspaceWizardProps {
   onCreate: (name: string) => Promise<void>;
@@ -28,30 +29,33 @@ export default function WorkspaceWizard({ onCreate, onLogout }: WorkspaceWizardP
   };
 
   return (
-    <Center mih="100vh" p="md" style={pageStyle}>
-      <Container size="xs" p={0}>
-        <Paper shadow="lg" p="xl" radius="lg" withBorder>
-          <Stack gap="lg">
-            <Stack gap={2} ta="center">
-              <Title order={2} c="teal.8">创建工作区</Title>
-              <Text c="dimmed" size="sm">给你的协作空间起个名字</Text>
-            </Stack>
-            <form onSubmit={form.onSubmit(handleCreate)}>
-              <Stack gap="md">
-                <TextInput label="工作区名称" placeholder="例如：产品团队" {...form.getInputProps('name')} />
-                <Button type="submit" color="teal" fullWidth loading={busy}>
-                  创建工作区
-                </Button>
-              </Stack>
-            </form>
-            <Text ta="center" size="sm">
-              <Button variant="subtle" size="compact-sm" color="teal" loading={busy} onClick={onLogout}>
-                登出
-              </Button>
-            </Text>
-          </Stack>
-        </Paper>
+    <AuthLayout>
+      <Container size={420} className={classes.container}>
+        <Box p="xl" className={classes.containerBox}>
+          <Title order={2} size="h2" ta="center" fw={500} mb="md">
+            创建工作区
+          </Title>
+          <Text c="dimmed" size="sm" ta="center" mb="lg">
+            给你的协作空间起个名字
+          </Text>
+          <form onSubmit={form.onSubmit(handleCreate)}>
+            <TextInput
+              label="工作区名称"
+              placeholder="例如：产品团队"
+              variant="filled"
+              {...form.getInputProps('name')}
+            />
+            <Button type="submit" fullWidth mt="xl" loading={busy}>
+              创建工作区
+            </Button>
+          </form>
+          <Text ta="center" size="sm" c="dimmed" mt="lg">
+            <Button variant="subtle" size="compact-sm" px={6} loading={busy} onClick={onLogout}>
+              登出
+            </Button>
+          </Text>
+        </Box>
       </Container>
-    </Center>
+    </AuthLayout>
   );
 }

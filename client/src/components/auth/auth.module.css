@@ -1,0 +1,58 @@
+.root {
+  min-height: 100vh;
+  background-color: var(--mantine-color-body);
+}
+
+.logo {
+  margin-top: 80px;
+}
+
+.logoMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background-color: var(--mantine-color-blue-7);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+}
+
+.logoText {
+  user-select: none;
+}
+
+.main {
+  outline: none;
+}
+
+.container {
+  border-radius: 4px;
+  background-color: var(--zc-main-bg);
+  box-shadow: rgba(0, 0, 0, 0.07) 0 2px 45px 4px;
+  margin-top: 40px;
+  margin-bottom: 20px;
+}
+
+.containerBox {
+  margin-top: 40px;
+}
+
+:global([data-mantine-color-scheme='dark']) .container {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 48em) {
+  .logo {
+    margin-top: 30px;
+  }
+
+  .container {
+    margin-top: 20px;
+    margin-bottom: 20px;
+  }
+}

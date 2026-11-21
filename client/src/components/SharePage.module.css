@@ -1,0 +1,27 @@
+.page {
+  min-height: 100vh;
+  padding: var(--mantine-spacing-md);
+  background: linear-gradient(135deg, #e3fbf6 0%, #eef2ff 55%, #fdf2f8 100%);
+}
+
+.inner {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--mantine-spacing-xl) 0;
+}
+
+.card {
+  padding: var(--mantine-spacing-md);
+  border: 1px solid var(--zc-border);
+  border-radius: var(--mantine-radius-sm);
+  background-color: var(--zc-main-bg);
+}
+
+.title {
+  margin: 0;
+  font-size: 2.125rem;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
