@@ -20,7 +20,6 @@ import {
 } from '@tabler/icons-react';
 import { searchDocs, type DocSearchResult, type DocSummary } from '../../api/doc';
 import type { WorkspaceContextValue } from '../../context/WorkspaceContext';
-import { readRecentDocs } from '../../lib/recentDocs';
 import classes from './CommandPalette.module.css';
 
 interface CommandPaletteProps {
@@ -40,8 +39,6 @@ interface PaletteItem {
   disabled?: boolean;
   run: () => void | Promise<void>;
 }
-
-const EMPTY_DOCS: DocSummary[] = [];
 
 function notifyError(error: unknown) {
   notifications.show({
@@ -64,12 +61,10 @@ export default function CommandPalette({
   opened,
   onClose,
   workspaceId,
-  docs,
   currentDocId,
   workspace,
 }: CommandPaletteProps) {
   const navigate = useNavigate();
-  const docList = docs ?? EMPTY_DOCS;
   const [input, setInput] = useState('');
   const [term, setTerm] = useState('');
   const [results, setResults] = useState<DocSearchResult[]>([]);
@@ -134,21 +129,7 @@ export default function CommandPalette({
     return () => window.cancelAnimationFrame(frame);
   }, [opened]);
 
-  const [recent, setRecent] = useState<{ id: string; title: string }[]>([]);
-
-  useEffect(() => {
-    if (!opened || !workspaceId) {
-      setRecent([]);
-      return;
-    }
-    const titles = new Map(docList.map((doc) => [doc.id, doc.title]));
-    setRecent(
-      readRecentDocs(workspaceId)
-        .filter((item) => titles.has(item.id))
-        .map((item) => ({ id: item.id, title: titles.get(item.id) || item.title }))
-        .slice(0, 5),
-    );
-  }, [docList, opened, workspaceId]);
+  const recent = (workspace?.recent ?? []).slice(0, 5);
 
   const openDoc = useCallback((docId: string) => {
     if (!workspaceId) return;
@@ -328,11 +309,11 @@ export default function CommandPalette({
           <>
             <div className={classes.groupLabel}>操作</div>
             {operations.map(renderItem)}
-            <div className={classes.groupLabel}>最近打开</div>
-            {recentItems.length ? (
-              recentItems.map((item, index) => renderItem(item, operations.length + index))
-            ) : (
-              <Text className={classes.empty} size="xs">暂无最近文档</Text>
+            {recentItems.length > 0 && (
+              <>
+                <div className={classes.groupLabel}>最近打开</div>
+                {recentItems.map((item, index) => renderItem(item, operations.length + index))}
+              </>
             )}
           </>
         ) : searching || input.trim() !== term ? (

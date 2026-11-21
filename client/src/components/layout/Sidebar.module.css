@@ -67,6 +67,67 @@
   white-space: nowrap;
 }
 
+.quickHeader {
+  padding: 0 10px;
+  margin-bottom: 5px;
+}
+
+.quickList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px 8px;
+}
+
+.quickRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 26px;
+  padding: 4px 8px;
+  border-radius: var(--mantine-radius-sm);
+  color: var(--zc-text);
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.quickRow:hover,
+.quickRow:focus-visible {
+  background-color: var(--zc-hover);
+  outline: none;
+}
+
+.quickRowActive,
+.quickRowActive:hover {
+  background-color: var(--zc-selected);
+}
+
+.quickIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--zc-icon);
+}
+
+.quickTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quickRemove {
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.quickRow:hover .quickRemove,
+.quickRow:focus-within .quickRemove {
+  opacity: 1;
+}
+
 .pagesSection {
   display: flex;
   flex-direction: column;

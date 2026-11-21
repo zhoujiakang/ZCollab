@@ -11,15 +11,32 @@ import {
   type SetStateAction,
 } from 'react';
 import { notifications } from '@mantine/notifications';
-import { createDoc, deleteDoc, listDocs, type Doc, type DocSummary } from '../api/doc';
+import {
+  createDoc,
+  deleteDoc,
+  listDocs,
+  listFavorites,
+  listRecentDocs,
+  toggleFavorite as toggleFavoriteApi,
+  type Doc,
+  type DocSummary,
+  type FavoriteDoc,
+  type RecentDoc,
+} from '../api/doc';
 import { collectRemoved } from '../lib/docTree';
 
 export interface WorkspaceContextValue {
   workspaceId: string;
   docs: DocSummary[];
   loadingDocs: boolean;
+  favorites: FavoriteDoc[];
+  recent: RecentDoc[];
+  favoriteIds: Set<string>;
   setDocs: Dispatch<SetStateAction<DocSummary[]>>;
   reloadDocs: () => Promise<void>;
+  refreshFavorites: () => Promise<void>;
+  refreshRecent: () => Promise<void>;
+  toggleFavorite: (id: string) => Promise<boolean>;
   registerFlush: (flush: (() => Promise<void>) | null) => void;
   flushPendingSave: () => Promise<void>;
   create: (parentDocId?: string | null) => Promise<Doc>;
@@ -62,7 +79,11 @@ export function WorkspaceProvider({ workspaceId, children }: { workspaceId: stri
   const { setWorkspace } = useWorkspaceBridge();
   const [docs, setDocs] = useState<DocSummary[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
+  const [favorites, setFavorites] = useState<FavoriteDoc[]>([]);
+  const [recent, setRecent] = useState<RecentDoc[]>([]);
   const flushRef = useRef<() => Promise<void>>(() => Promise.resolve());
+  const favoritesRequestRef = useRef(0);
+  const recentRequestRef = useRef(0);
 
   const reloadDocs = useCallback(async () => {
     setLoadingDocs(true);
@@ -75,9 +96,33 @@ export function WorkspaceProvider({ workspaceId, children }: { workspaceId: stri
     }
   }, []);
 
+  const refreshFavorites = useCallback(async () => {
+    const request = ++favoritesRequestRef.current;
+    try {
+      const items = await listFavorites();
+      if (request === favoritesRequestRef.current) setFavorites(items);
+    } catch {
+      if (request === favoritesRequestRef.current) setFavorites([]);
+    }
+  }, []);
+
+  const refreshRecent = useCallback(async () => {
+    const request = ++recentRequestRef.current;
+    try {
+      const items = await listRecentDocs();
+      if (request === recentRequestRef.current) setRecent(items);
+    } catch {
+      if (request === recentRequestRef.current) setRecent([]);
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
     setDocs([]);
+    setFavorites([]);
+    setRecent([]);
+    favoritesRequestRef.current += 1;
+    recentRequestRef.current += 1;
     setLoadingDocs(true);
     listDocs()
       .then((items) => {
@@ -87,10 +132,12 @@ export function WorkspaceProvider({ workspaceId, children }: { workspaceId: stri
       .finally(() => {
         if (active) setLoadingDocs(false);
       });
+    void refreshFavorites();
+    void refreshRecent();
     return () => {
       active = false;
     };
-  }, [workspaceId]);
+  }, [workspaceId, refreshFavorites, refreshRecent]);
 
   const registerFlush = useCallback((flush: (() => Promise<void>) | null) => {
     flushRef.current = flush ?? (() => Promise.resolve());
@@ -116,13 +163,38 @@ export function WorkspaceProvider({ workspaceId, children }: { workspaceId: stri
         const removed = collectRemoved(prev, id);
         return prev.filter((item) => !removed.has(item.id));
       });
+      await Promise.all([refreshFavorites(), refreshRecent()]);
     },
-    [flushPendingSave],
+    [flushPendingSave, refreshFavorites, refreshRecent],
   );
 
+  const toggleFavorite = useCallback(
+    async (id: string) => {
+      try {
+        const favorite = await toggleFavoriteApi(id);
+        await Promise.all([refreshFavorites(), refreshRecent()]);
+        return favorite;
+      } catch (error) {
+        notifyError(error);
+        throw error;
+      }
+    },
+    [refreshFavorites, refreshRecent],
+  );
+
+  const favoriteIds = useMemo(() => new Set(favorites.map((item) => item.id)), [favorites]);
+
   const value = useMemo<WorkspaceContextValue>(
-    () => ({ workspaceId, docs, loadingDocs, setDocs, reloadDocs, registerFlush, flushPendingSave, create, remove }),
-    [workspaceId, docs, loadingDocs, reloadDocs, registerFlush, flushPendingSave, create, remove],
+    () => ({
+      workspaceId, docs, loadingDocs, favorites, recent, favoriteIds,
+      setDocs, reloadDocs, refreshFavorites, refreshRecent, toggleFavorite,
+      registerFlush, flushPendingSave, create, remove,
+    }),
+    [
+      workspaceId, docs, loadingDocs, favorites, recent, favoriteIds,
+      reloadDocs, refreshFavorites, refreshRecent, toggleFavorite,
+      registerFlush, flushPendingSave, create, remove,
+    ],
   );
 
   useEffect(() => {

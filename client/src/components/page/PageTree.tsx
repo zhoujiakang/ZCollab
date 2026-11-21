@@ -29,6 +29,9 @@ import {
   IconLink,
   IconPencil,
   IconPlus,
+  IconStar,
+  IconStarFilled,
+  IconStarOff,
   IconTrash,
 } from '@tabler/icons-react';
 import {
@@ -227,7 +230,7 @@ export default function PageTree({
   onSelect,
   onDelete,
 }: PageTreeProps) {
-  const { workspaceId, setDocs, create, reloadDocs } = useWorkspace();
+  const { workspaceId, setDocs, create, reloadDocs, favoriteIds, toggleFavorite } = useWorkspace();
   const [expandedMap, setExpandedMap] = useState<Record<string, string[]>>(() => ({
     [workspaceId]: readExpanded(workspaceId),
   }));
@@ -471,6 +474,11 @@ export default function PageTree({
     }
   }, [workspaceId]);
 
+  const handleToggleFavorite = useCallback((id: string) => {
+    setMenuState(null);
+    void toggleFavorite(id).catch(() => undefined);
+  }, [toggleFavorite]);
+
   const createChild = useCallback(async (parentId: string) => {
     if (creatingId) return;
     setCreatingId(parentId);
@@ -640,6 +648,11 @@ export default function PageTree({
         ) : (
           <span className={classes.title}>{node.title || '无标题'}</span>
         )}
+        {favoriteIds.has(node.id) && (
+          <span className={classes.favoriteMark} title="已收藏">
+            <IconStarFilled size={12} stroke={1.7} />
+          </span>
+        )}
         {!isRenaming && (
           <span className={classes.actions}>
             <Tooltip label="新建子页面" withArrow>
@@ -677,6 +690,7 @@ export default function PageTree({
   };
 
   const menuDoc = menuState ? docs.find((doc) => doc.id === menuState.docId) : undefined;
+  const menuFavorite = menuDoc ? favoriteIds.has(menuDoc.id) : false;
   const blankActive = dropTarget?.id === BLANK_DROP_ID;
 
   return (
@@ -733,6 +747,15 @@ export default function PageTree({
             }}
           >
             移动到…
+          </Menu.Item>
+          <Menu.Item
+            leftSection={menuFavorite
+              ? <IconStarOff size={15} stroke={1.7} />
+              : <IconStar size={15} stroke={1.7} />}
+            disabled={!menuDoc}
+            onClick={() => menuDoc && handleToggleFavorite(menuDoc.id)}
+          >
+            {menuFavorite ? '取消收藏' : '收藏'}
           </Menu.Item>
           <Menu.Item
             leftSection={<IconLink size={15} stroke={1.7} />}

@@ -22,6 +22,17 @@ export interface DocSearchResult {
   score: number;
 }
 
+export interface FavoriteDoc {
+  id: string;
+  title: string;
+}
+
+export interface RecentDoc {
+  id: string;
+  title: string;
+  visitedAt: string;
+}
+
 export function listDocs(): Promise<DocSummary[]> {
   return apiPost<DocSummary[]>('/doc/list');
 }
@@ -58,4 +69,20 @@ export interface MoveDocInput {
 
 export function moveDoc({ id, parentDocId, beforeDocId = null }: MoveDocInput): Promise<void> {
   return apiPost<boolean>('/doc/move', { id, parentDocId, beforeDocId }).then(() => undefined);
+}
+
+export function toggleFavorite(id: string): Promise<boolean> {
+  return apiPost<boolean>('/doc/favorite/toggle', { id });
+}
+
+export function listFavorites(): Promise<FavoriteDoc[]> {
+  return apiPost<FavoriteDoc[]>('/doc/favorites');
+}
+
+export function visitDoc(id: string): Promise<void> {
+  return apiPost<boolean>('/doc/visit', { id }).then(() => undefined);
+}
+
+export function listRecentDocs(): Promise<RecentDoc[]> {
+  return apiPost<RecentDoc[]>('/doc/recent');
 }

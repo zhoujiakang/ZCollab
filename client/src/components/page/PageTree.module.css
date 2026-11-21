@@ -82,6 +82,13 @@
   white-space: nowrap;
 }
 
+.favoriteMark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  color: var(--mantine-primary-color-filled);
+}
+
 .rename {
   flex: 1;
   min-width: 0;

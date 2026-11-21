@@ -22,16 +22,17 @@ import {
   IconListNumbers,
   IconMinus,
   IconShare3,
+  IconStar,
+  IconStarFilled,
   IconStrikethrough,
   IconTrash,
 } from '@tabler/icons-react';
-import { claimSeedDoc, getDoc, updateDoc, type Doc } from '../../api/doc';
+import { claimSeedDoc, getDoc, updateDoc, visitDoc, type Doc } from '../../api/doc';
 import { useAuth } from '../../context/AuthContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useCollabDoc, type CollabStatus } from '../../collab/useCollabDoc';
 import { hasDocContent, parseDocContent } from '../../lib/docContent';
 import { getDocPath } from '../../lib/docTree';
-import { recordRecentDoc } from '../../lib/recentDocs';
 import { useAside, type AsideHeading } from '../layout/AsideContext';
 import ShareDialog from '../ShareDialog';
 import editorClasses from './Editor.module.css';
@@ -402,7 +403,9 @@ export default function PageView() {
   const { workspaceId, docId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { docs, setDocs, remove, registerFlush } = useWorkspace();
+  const {
+    docs, setDocs, remove, registerFlush, favoriteIds, toggleFavorite, refreshRecent,
+  } = useWorkspace();
   const workspace = workspaceId!;
 
   const [selected, setSelected] = useState<Doc | null>(null);
@@ -551,8 +554,7 @@ export default function PageView() {
     setActiveHeadingId(null);
     setEditorReady(false);
     publish(null);
-    recordRecentDoc(workspace, { id: doc.id, title: doc.title });
-  }, [clearSaveTimer, publish, workspace]);
+  }, [clearSaveTimer, publish]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -593,6 +595,13 @@ export default function PageView() {
         const doc = await getDoc(docId);
         if (!active) return;
         openDoc(doc);
+        void visitDoc(doc.id)
+          .then(() => {
+            if (active) return refreshRecent();
+          })
+          .catch((error) => {
+            console.error('记录最近打开失败', error);
+          });
       } catch (error) {
         if (active) {
           notifyError(error);
@@ -605,7 +614,7 @@ export default function PageView() {
     return () => {
       active = false;
     };
-  }, [docId, flushBeforeSwitch, openDoc]);
+  }, [docId, flushBeforeSwitch, openDoc, refreshRecent]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -698,6 +707,7 @@ export default function PageView() {
   }, [editorReady, selected, docId, title, outline, activeHeadingId, online, onJump, publish]);
 
   const path = useMemo(() => getDocPath(docs, docId), [docs, docId]);
+  const isFavorite = Boolean(selected && favoriteIds.has(selected.id));
   const crumbs = path.length
     ? path
     : docId
@@ -740,6 +750,25 @@ export default function PageView() {
         <div className={classes.headerRight}>
           <Text className={classes.status} c={CONNECTION_COLORS[status]}>{CONNECTION_LABELS[status]}</Text>
           <Text className={classes.status} c={SAVE_COLORS[saveStatus]}>{SAVE_LABELS[saveStatus]}</Text>
+          <Tooltip label={isFavorite ? '取消收藏' : '收藏'} withArrow>
+            <span>
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                aria-label={isFavorite ? '取消收藏' : '收藏'}
+                disabled={!selected}
+                onClick={() => {
+                  if (selected) void toggleFavorite(selected.id).catch(() => undefined);
+                }}
+              >
+                {isFavorite ? (
+                  <IconStarFilled size={18} stroke={1.7} style={{ color: 'var(--mantine-primary-color-filled)' }} />
+                ) : (
+                  <IconStar size={18} stroke={1.7} />
+                )}
+              </ActionIcon>
+            </span>
+          </Tooltip>
           <Tooltip label="分享" withArrow>
             <span>
               <ActionIcon
