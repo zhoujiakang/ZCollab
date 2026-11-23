@@ -153,6 +153,16 @@ export function markdownToDoc(md: string): { json: JSONContent; text: string } {
   const pop = () => {
     if (stack.length > 1) stack.pop();
   };
+  /** 空的 listItem / blockquote 在 schema 里不合法，setContent 时会被整块丢掉；补一个空段落占位。 */
+  const popBlockWithPlaceholder = () => {
+    const frame = stack[stack.length - 1];
+    if (frame
+        && (frame.node.type === 'listItem' || frame.node.type === 'blockquote')
+        && !(frame.node.content && frame.node.content.length)) {
+      frame.node.content = [{ type: 'paragraph', content: [] }];
+    }
+    pop();
+  };
   const openCell = (header: boolean) => {
     const cell: JSONContent = { type: header ? 'tableHeader' : 'tableCell', content: [] };
     push(cell);
@@ -199,13 +209,13 @@ export function markdownToDoc(md: string): { json: JSONContent; text: string } {
         push({ type: 'listItem', content: [] });
         break;
       case 'list_item_close':
-        pop();
+        popBlockWithPlaceholder();
         break;
       case 'blockquote_open':
         push({ type: 'blockquote', content: [] });
         break;
       case 'blockquote_close':
-        pop();
+        popBlockWithPlaceholder();
         break;
       case 'fence':
       case 'code_block':
