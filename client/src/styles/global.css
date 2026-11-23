@@ -9,6 +9,14 @@
   --zc-icon: var(--mantine-color-gray-6);
   --zc-code-bg: var(--mantine-color-gray-1);
   --zc-quote-border: var(--mantine-color-gray-4);
+  --zc-hl-keyword: var(--mantine-color-violet-7);
+  --zc-hl-string: var(--mantine-color-teal-7);
+  --zc-hl-number: var(--mantine-color-orange-7);
+  --zc-hl-comment: var(--mantine-color-gray-6);
+  --zc-hl-title: var(--mantine-color-blue-7);
+  --zc-hl-attr: var(--mantine-color-cyan-7);
+  --zc-hl-built-in: var(--mantine-color-red-7);
+  --zc-hl-variable: var(--mantine-color-indigo-7);
 }
 
 [data-mantine-color-scheme='dark'] {
@@ -22,6 +30,14 @@
   --zc-icon: var(--mantine-color-dark-2);
   --zc-code-bg: var(--mantine-color-dark-8);
   --zc-quote-border: var(--mantine-color-dark-4);
+  --zc-hl-keyword: var(--mantine-color-violet-4);
+  --zc-hl-string: var(--mantine-color-teal-4);
+  --zc-hl-number: var(--mantine-color-orange-4);
+  --zc-hl-comment: var(--mantine-color-dark-3);
+  --zc-hl-title: var(--mantine-color-blue-4);
+  --zc-hl-attr: var(--mantine-color-cyan-4);
+  --zc-hl-built-in: var(--mantine-color-red-4);
+  --zc-hl-variable: var(--mantine-color-indigo-4);
 }
 
 * {

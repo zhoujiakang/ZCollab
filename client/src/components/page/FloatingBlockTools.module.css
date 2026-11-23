@@ -1,0 +1,19 @@
+.floatLayer {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100vw - 24px);
+  padding: 4px;
+  border: 1px solid var(--zc-border);
+  border-radius: var(--mantine-radius-sm);
+  background-color: var(--mantine-color-default);
+  box-shadow: var(--mantine-shadow-sm);
+  overflow-x: auto;
+}
+
+.languageButton {
+  min-width: 92px;
+  justify-content: space-between;
+}

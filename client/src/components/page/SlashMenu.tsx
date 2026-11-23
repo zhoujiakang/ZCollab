@@ -11,6 +11,7 @@ import { Paper } from '@mantine/core';
 import type { Editor } from '@tiptap/core';
 import {
   IconAlignLeft,
+  IconCode,
   IconH1,
   IconH2,
   IconH3,
@@ -102,6 +103,15 @@ export function createSlashCommands(onRequestUpload: OnRequestUpload): SlashComm
       icon: <IconTable size={18} stroke={1.7} />,
       action: (editor) => {
         editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+      },
+    },
+    {
+      label: '代码块',
+      description: '插入代码块，支持语法高亮',
+      keywords: ['code', 'codeblock', 'pre', '代码'],
+      icon: <IconCode size={18} stroke={1.7} />,
+      action: (editor) => {
+        editor.chain().focus().setCodeBlock({ language: 'plaintext' }).run();
       },
     },
     {

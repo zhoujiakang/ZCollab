@@ -98,6 +98,42 @@
   margin: 1.5em 0;
 }
 
+/* lowlight 输出的 hljs token 全部走主题变量，不引入 highlight.js 的固定配色。 */
+.editor :global(.zcollab-editor .hljs-keyword),
+.editor :global(.zcollab-editor .hljs-literal) {
+  color: var(--zc-hl-keyword);
+}
+
+.editor :global(.zcollab-editor .hljs-string) {
+  color: var(--zc-hl-string);
+}
+
+.editor :global(.zcollab-editor .hljs-number) {
+  color: var(--zc-hl-number);
+}
+
+.editor :global(.zcollab-editor .hljs-comment) {
+  color: var(--zc-hl-comment);
+  font-style: italic;
+}
+
+.editor :global(.zcollab-editor .hljs-title),
+.editor :global(.zcollab-editor .hljs-function) {
+  color: var(--zc-hl-title);
+}
+
+.editor :global(.zcollab-editor .hljs-attr) {
+  color: var(--zc-hl-attr);
+}
+
+.editor :global(.zcollab-editor .hljs-built_in) {
+  color: var(--zc-hl-built-in);
+}
+
+.editor :global(.zcollab-editor .hljs-variable) {
+  color: var(--zc-hl-variable);
+}
+
 .editor :global(.zcollab-editor .tableWrapper) {
   max-width: 100%;
   overflow-x: auto;

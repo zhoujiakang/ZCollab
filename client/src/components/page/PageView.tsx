@@ -14,9 +14,6 @@ import {
   IconBlockquote,
   IconBold,
   IconCode,
-  IconColumnInsertLeft,
-  IconColumnInsertRight,
-  IconColumnRemove,
   IconH1,
   IconH2,
   IconH3,
@@ -26,15 +23,11 @@ import {
   IconMinus,
   IconPaperclip,
   IconPhoto,
-  IconRowInsertBottom,
-  IconRowInsertTop,
-  IconRowRemove,
   IconShare3,
   IconStar,
   IconStarFilled,
   IconStrikethrough,
   IconTable,
-  IconTableRow,
   IconTrash,
 } from '@tabler/icons-react';
 import { claimSeedDoc, getDoc, updateDoc, visitDoc, type Doc } from '../../api/doc';
@@ -49,6 +42,7 @@ import ShareDialog from '../ShareDialog';
 import { createContentExtensions } from './contentExtensions';
 import { BlockHandle } from './BlockHandle';
 import { SlashCommand } from './SlashCommand';
+import FloatingBlockTools from './FloatingBlockTools';
 import type { SlashUploadKind } from './SlashMenu';
 import editorClasses from './Editor.module.css';
 import classes from './PageView.module.css';
@@ -258,7 +252,7 @@ function CollabEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ undoRedo: false, link: { openOnClick: false } }),
+      StarterKit.configure({ codeBlock: false, undoRedo: false, link: { openOnClick: false } }),
       ...createContentExtensions(),
       BlockHandle,
       slashCommand,
@@ -475,7 +469,6 @@ function CollabEditor({
       blockquote: !!current?.isActive('blockquote'),
       codeBlock: !!current?.isActive('codeBlock'),
       inTable: !!current?.isActive('table'),
-      inHeaderRow: !!current?.isActive('tableHeader'),
     }),
   });
 
@@ -520,17 +513,6 @@ function CollabEditor({
     },
   ];
 
-  const tableActions = [
-    { key: 'addRowBefore', label: '上方加行', icon: <IconRowInsertTop size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().addRowBefore().run() },
-    { key: 'addRowAfter', label: '下方加行', icon: <IconRowInsertBottom size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().addRowAfter().run() },
-    { key: 'addColumnBefore', label: '左侧加列', icon: <IconColumnInsertLeft size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().addColumnBefore().run() },
-    { key: 'addColumnAfter', label: '右侧加列', icon: <IconColumnInsertRight size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().addColumnAfter().run() },
-    { key: 'deleteRow', label: '删行', icon: <IconRowRemove size={16} stroke={1.7} />, unavailable: !!toolbar?.inHeaderRow, action: () => editor.chain().focus().deleteRow().run() },
-    { key: 'deleteColumn', label: '删列', icon: <IconColumnRemove size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().deleteColumn().run() },
-    { key: 'toggleHeaderRow', label: '切换表头', icon: <IconTableRow size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().toggleHeaderRow().run() },
-    { key: 'deleteTable', label: '删除表格', icon: <IconTrash size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().deleteTable().run() },
-  ];
-
   return (
     <>
       <div className={classes.toolbar}>
@@ -550,29 +532,9 @@ function CollabEditor({
           </ActionIcon>
         ))}
       </div>
-      <div className={classes.tableToolbarSlot}>
-        {toolbar?.inTable && (
-          <div className={classes.tableToolbar} role="toolbar" aria-label="表格操作">
-            {tableActions.map((item) => (
-              <ActionIcon
-                key={item.key}
-                size="compact-md"
-                variant="subtle"
-                color="gray"
-                disabled={item.unavailable}
-                title={item.label}
-                aria-label={item.label}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={item.action}
-              >
-                {item.icon}
-              </ActionIcon>
-            ))}
-          </div>
-        )}
-      </div>
       {waitingForSeed && <Text className={classes.loadingNote}>正在同步内容</Text>}
       <EditorContent editor={editor} />
+      <FloatingBlockTools editor={editor} />
       <input
         ref={imageInputRef}
         type="file"

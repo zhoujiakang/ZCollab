@@ -138,19 +138,6 @@
   border-bottom: 1px solid var(--zc-border);
 }
 
-/* 固定预留一行高度，光标进出表格时正文不会上下跳动。 */
-.tableToolbarSlot {
-  min-height: 30px;
-}
-
-.tableToolbar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 30px;
-  overflow-x: auto;
-}
-
 .loadingNote {
   color: var(--mantine-color-dimmed);
   font-size: var(--mantine-font-size-sm);

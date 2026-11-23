@@ -11,7 +11,7 @@ import classes from './SharePage.module.css';
 function ReadOnlyBody({ content }: { content: string }) {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ link: { openOnClick: false } }),
+      StarterKit.configure({ codeBlock: false, link: { openOnClick: false } }),
       ...createContentExtensions(),
     ],
     content: parseDocContent(content),
