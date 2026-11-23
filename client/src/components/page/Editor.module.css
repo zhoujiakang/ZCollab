@@ -12,6 +12,18 @@
   outline: none;
 }
 
+.editor :global(.zcollab-editor .comment-highlight) {
+  background-color: var(--mantine-primary-color-light);
+  background-color: color-mix(in srgb, var(--mantine-primary-color-filled) 12%, transparent);
+  border-bottom: 2px solid var(--mantine-primary-color-filled);
+  cursor: pointer;
+}
+
+.editor :global(.zcollab-editor .comment-highlight[data-active='true']) {
+  background-color: var(--mantine-primary-color-light-hover);
+  background-color: color-mix(in srgb, var(--mantine-primary-color-filled) 26%, transparent);
+}
+
 .editor :global(.zcollab-editor > :where(:not(:first-child))) {
   margin-top: 0.75em;
 }

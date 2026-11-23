@@ -15,11 +15,18 @@ interface CommentPanelProps {
   create: (input: CreateCommentInput) => Promise<void>;
   resolve: (id: string, resolved: boolean) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  activeId: string | null;
+  setActiveId: (id: string | null) => void;
+  locatedIds: Set<string>;
+  locatedReady: boolean;
 }
 
 interface ItemProps {
   comment: DocComment;
   isReply?: boolean;
+  active: boolean;
+  stale: boolean;
+  onSelect: (id: string) => void;
   replyOpen: boolean;
   replyText: string;
   replySubmitting: boolean;
@@ -40,29 +47,53 @@ function notifyError(error: unknown) {
 }
 
 function CommentItem({
-  comment, isReply, replyOpen, replyText, replySubmitting,
+  comment, isReply, active, stale, onSelect,
+  replyOpen, replyText, replySubmitting,
   onReplyClick, onReplyTextChange, onReplyCancel, onReplySubmit, onResolve, onDelete,
 }: ItemProps) {
   return (
-    <div className={`${classes.item} ${isReply ? classes.reply : ''}`}>
+    <div
+      data-comment-id={comment.id}
+      className={[
+        classes.item,
+        isReply ? classes.reply : '',
+        active ? classes.active : '',
+      ].filter(Boolean).join(' ')}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect(comment.id);
+      }}
+    >
       <div className={classes.head}>
         <Avatar src={comment.author.avatarUrl ?? undefined} name={comment.author.name} size="xs" radius="xl" />
         <span className={classes.name}>{comment.author.name}</span>
         <span className={classes.time}>{formatRelativeTime(comment.createdAt)}</span>
+        {stale && (
+          <span className={classes.stale} title="引用的文字已被修改，无法定位">原文已修改</span>
+        )}
       </div>
       {comment.quote && <div className={classes.quote}>{comment.quote}</div>}
       <div className={classes.body}>{comment.body}</div>
       <div className={classes.actions}>
         {!isReply && (
-          <button type="button" className={classes.action} onClick={() => onReplyClick(comment.id)}>回复</button>
+          <button type="button" className={classes.action} onClick={(event) => {
+            event.stopPropagation();
+            onReplyClick(comment.id);
+          }}>回复</button>
         )}
         {!isReply && (
-          <button type="button" className={classes.action} onClick={() => onResolve(comment)}>
+          <button type="button" className={classes.action} onClick={(event) => {
+            event.stopPropagation();
+            onResolve(comment);
+          }}>
             {comment.resolvedAt ? '重新打开' : '解决'}
           </button>
         )}
         {comment.canDelete && (
-          <button type="button" className={classes.action} onClick={() => onDelete(comment)}>删除</button>
+          <button type="button" className={classes.action} onClick={(event) => {
+            event.stopPropagation();
+            onDelete(comment);
+          }}>删除</button>
         )}
       </div>
       {!isReply && replyOpen && (
@@ -90,6 +121,9 @@ function CommentItem({
           key={reply.id}
           comment={reply}
           isReply
+          active={false}
+          stale={false}
+          onSelect={onSelect}
           replyOpen={false}
           replyText=""
           replySubmitting={false}
@@ -107,6 +141,7 @@ function CommentItem({
 
 export default function CommentPanel({
   docId, comments, draft, setDraft, create, resolve, remove,
+  activeId, setActiveId, locatedIds, locatedReady,
 }: CommentPanelProps) {
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -159,6 +194,9 @@ export default function CommentPanel({
     <CommentItem
       key={comment.id}
       comment={comment}
+      active={activeId === comment.id}
+      stale={locatedReady && !comment.resolvedAt && !!comment.quote && !locatedIds.has(comment.id)}
+      onSelect={setActiveId}
       replyOpen={replyTo === comment.id}
       replyText={replyText}
       replySubmitting={replySubmitting}

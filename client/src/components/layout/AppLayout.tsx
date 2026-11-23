@@ -5,6 +5,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import AppHeader from './AppHeader';
 import { AsideProvider, isDocPagePath, useAside } from './AsideContext';
 import { CommentDraftProvider } from './CommentDraftContext';
+import { CommentsProvider } from './CommentsContext';
 import GlobalSidebar from './GlobalSidebar';
 import WorkspaceSidebar from './WorkspaceSidebar';
 import PageAside from '../page/PageAside';
@@ -14,7 +15,9 @@ export default function AppLayout() {
   return (
     <AsideProvider>
       <CommentDraftProvider>
-        <AppShellLayout />
+        <CommentsProvider>
+          <AppShellLayout />
+        </CommentsProvider>
       </CommentDraftProvider>
     </AsideProvider>
   );

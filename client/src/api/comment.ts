@@ -14,6 +14,9 @@ export interface DocComment {
   author: CommentAuthor;
   createdAt: string;
   resolvedAt: string | null;
+  /** 创建评论时的偏移，仅用于多命中时择优；列表接口可能不返回。 */
+  anchorFrom?: number | null;
+  anchorTo?: number | null;
   canDelete: boolean;
   replies: DocComment[];
 }

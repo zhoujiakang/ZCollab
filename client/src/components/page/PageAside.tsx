@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { ActionIcon, CopyButton, ScrollArea, Tabs, Text, Tooltip } from '@mantine/core';
 import { IconCheck, IconCopy } from '@tabler/icons-react';
@@ -8,8 +8,8 @@ import { getDocPath } from '../../lib/docTree';
 import { formatRelativeTime } from '../../lib/relativeTime';
 import { useAside } from '../layout/AsideContext';
 import { useCommentDraft } from '../layout/CommentDraftContext';
+import { useCommentsContext } from '../layout/CommentsContext';
 import CommentPanel from './CommentPanel';
-import { useComments } from './useComments';
 import classes from './PageAside.module.css';
 
 function countUnresolved(comment: DocComment): number {
@@ -31,8 +31,11 @@ export default function PageAside() {
   const { docs } = useWorkspace();
   const { docId } = useParams();
   const { draft, setDraft } = useCommentDraft();
-  const { comments, create, resolve, remove } = useComments(docId);
+  const {
+    comments, create, resolve, remove, activeId, setActiveId, locatedIds, locatedReady,
+  } = useCommentsContext();
   const [tab, setTab] = useState('toc');
+  const commentsPanelRef = useRef<HTMLDivElement>(null);
   const path = getDocPath(docs, docId);
   const location = path.length
     ? path.map((item) => item.title || '无标题').join(' / ')
@@ -42,6 +45,17 @@ export default function PageAside() {
   useEffect(() => {
     if (draft) setTab('comments');
   }, [draft]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    setTab('comments');
+    const frame = window.requestAnimationFrame(() => {
+      const items = Array.from(commentsPanelRef.current?.querySelectorAll<HTMLElement>('[data-comment-id]') ?? []);
+      items.find((item) => item.dataset.commentId === activeId)
+        ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeId]);
 
   useEffect(() => {
     setDraft(null);
@@ -121,15 +135,21 @@ export default function PageAside() {
 
       <Tabs.Panel value="comments">
         <ScrollArea h="100%" type="auto" className={classes.scroll}>
-          <CommentPanel
-            docId={docId ?? ''}
-            comments={comments}
-            draft={draft}
-            setDraft={setDraft}
-            create={create}
-            resolve={resolve}
-            remove={remove}
-          />
+          <div ref={commentsPanelRef}>
+            <CommentPanel
+              docId={docId ?? ''}
+              comments={comments}
+              draft={draft}
+              setDraft={setDraft}
+              create={create}
+              resolve={resolve}
+              remove={remove}
+              activeId={activeId}
+              setActiveId={setActiveId}
+              locatedIds={locatedIds}
+              locatedReady={locatedReady}
+            />
+          </div>
         </ScrollArea>
       </Tabs.Panel>
     </Tabs>

@@ -43,6 +43,30 @@
 .item {
   padding: 4px 0 8px;
   border-bottom: 1px solid var(--zc-border);
+  border-radius: var(--mantine-radius-sm);
+  cursor: pointer;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.active {
+  background-color: var(--mantine-primary-color-light);
+  box-shadow: inset 0 0 0 1px var(--mantine-primary-color-filled);
+  animation: comment-flash 1.5s ease-out;
+}
+
+@keyframes comment-flash {
+  0% { background-color: var(--mantine-primary-color-light-hover); }
+  100% { background-color: var(--mantine-primary-color-light); }
+}
+
+.stale {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border-radius: var(--mantine-radius-xs);
+  background-color: var(--mantine-color-orange-light);
+  color: var(--mantine-color-orange-filled);
+  font-size: 10px;
+  white-space: nowrap;
 }
 
 .reply {

@@ -36,11 +36,14 @@ import { uploadFile } from '../../api/file';
 import { useAuth } from '../../context/AuthContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useCollabDoc, type CollabStatus } from '../../collab/useCollabDoc';
+import { computeCommentRanges, type CommentRange } from '../../lib/commentAnchor';
 import { hasDocContent, parseDocContent } from '../../lib/docContent';
 import { docToMarkdown, downloadMarkdownFile } from '../../lib/markdownExport';
 import { getDocPath } from '../../lib/docTree';
 import { useAside, type AsideHeading } from '../layout/AsideContext';
+import { useCommentsContext } from '../layout/CommentsContext';
 import ShareDialog from '../ShareDialog';
+import { CommentAnchors } from './CommentAnchors';
 import { createContentExtensions } from './contentExtensions';
 import { BlockHandle } from './BlockHandle';
 import { SlashCommand } from './SlashCommand';
@@ -68,6 +71,8 @@ const SAVE_COLORS: Record<SaveStatus, string> = {
 
 const SAVE_DELAY = 1500;
 const OUTLINE_TOP_OFFSET = 110;
+const COMMENT_SCROLL_OFFSET = 120;
+const ANCHOR_RECOMPUTE_DELAY = 400;
 
 const CONNECTION_LABELS: Record<CollabStatus, string> = {
   connecting: '协同连接中…',
@@ -119,6 +124,18 @@ function colorFromUserId(id: string): string {
     hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
   }
   return USER_COLORS[hash % USER_COLORS.length];
+}
+
+function findScrollContainer(element: HTMLElement): HTMLElement {
+  let node: HTMLElement | null = element;
+  while (node) {
+    const overflow = window.getComputedStyle(node).overflowY;
+    if ((overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight) {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
 }
 
 interface AwarenessUser {
@@ -222,6 +239,7 @@ interface CollabEditorProps {
   editorRef: { current: Editor | null };
   onDirty: () => void;
   onReady: () => void;
+  onCommentClick: (id: string) => void;
 }
 
 /** 正文只由 Yjs 提供；连接状态变化不会走到这里重建 editor。 */
@@ -234,10 +252,13 @@ function CollabEditor({
   editorRef,
   onDirty,
   onReady,
+  onCommentClick,
 }: CollabEditorProps) {
   const initialContentRef = useRef(initialContent);
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
+  const onCommentClickRef = useRef(onCommentClick);
+  onCommentClickRef.current = onCommentClick;
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -265,6 +286,7 @@ function CollabEditor({
     extensions: [
       StarterKit.configure({ codeBlock: false, undoRedo: false, link: { openOnClick: false } }),
       ...createContentExtensions(),
+      CommentAnchors,
       BlockHandle,
       slashCommand,
       Collaboration.configure({ document: ydoc, field: 'content' }),
@@ -278,6 +300,11 @@ function CollabEditor({
       handleClick: (_view, _pos, event) => {
         const target = event.target;
         if (!(target instanceof Element)) return false;
+        const highlight = target.closest<HTMLElement>('[data-comment-id]');
+        if (highlight?.dataset.commentId) {
+          onCommentClickRef.current(highlight.dataset.commentId);
+          return true;
+        }
         const link = target.closest('a[href]') as HTMLAnchorElement | null;
         if (!link || !(event.metaKey || event.ctrlKey)) return false;
         window.open(link.href, '_blank', 'noopener');
@@ -590,12 +617,16 @@ export default function PageView() {
   const [exporting, setExporting] = useState(false);
 
   const { ydoc, provider, status } = useCollabDoc(docId ?? null);
-  const { publish } = useAside();
+  const { publish, open: openAside } = useAside();
+  const {
+    comments, activeId, setActiveId, reportLocatedIds,
+  } = useCommentsContext();
   const online = useAwarenessCount(provider);
 
   const [outline, setOutline] = useState<OutlineState>({ headings: [], chars: 0, charsWithSpace: 0, paragraphs: 0 });
   const [editorRevision, setEditorRevision] = useState(0);
   const [editorReady, setEditorReady] = useState(false);
+  const [anchorEditor, setAnchorEditor] = useState<Editor | null>(null);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
 
   const titleRef = useRef('');
@@ -608,6 +639,20 @@ export default function PageView() {
   const inFlightRef = useRef<Promise<void> | null>(null);
   const needsIndexRef = useRef(false);
   const exportingRef = useRef(false);
+  const commentRangesRef = useRef<CommentRange[]>([]);
+  const anchorTimerRef = useRef<number | null>(null);
+  const lastActiveScrollRef = useRef<{ id: string | null; editor: Editor | null }>({ id: null, editor: null });
+  const commentsRef = useRef(comments);
+  commentsRef.current = comments;
+
+  const recomputeCommentAnchors = useCallback(() => {
+    const current = editorRef.current;
+    if (!current) return;
+    const ranges = computeCommentRanges(current.state.doc, commentsRef.current);
+    commentRangesRef.current = ranges;
+    current.commands.updateCommentAnchors(ranges);
+    reportLocatedIds(new Set(ranges.map((range) => range.id)));
+  }, [reportLocatedIds]);
 
   const clearSaveTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -692,12 +737,73 @@ export default function PageView() {
   }, [clearSaveTimer, flushNow]);
 
   const handleEditorReady = useCallback(() => {
+    setAnchorEditor(editorRef.current);
     setEditorReady(true);
     setEditorRevision((value) => value + 1);
     if (!needsIndexRef.current) return;
     needsIndexRef.current = false;
     markDirty();
   }, [markDirty]);
+
+  useEffect(() => {
+    if (editorReady && editorRef.current && editorRef.current !== anchorEditor) {
+      setAnchorEditor(editorRef.current);
+    }
+  }, [editorReady, anchorEditor]);
+
+  // 评论增删、解决状态变化或编辑器重建后立即按 quote 重新定位；同一份文档只拍平一次。
+  useEffect(() => {
+    if (!anchorEditor) return;
+    recomputeCommentAnchors();
+  }, [comments, anchorEditor, recomputeCommentAnchors]);
+
+  // 远端协同改动会让偏移漂移，节流后按 quote 重新回查当前文档。
+  useEffect(() => {
+    if (!anchorEditor) return;
+    const scheduleRecompute = () => {
+      if (anchorTimerRef.current !== null) window.clearTimeout(anchorTimerRef.current);
+      anchorTimerRef.current = window.setTimeout(() => {
+        anchorTimerRef.current = null;
+        recomputeCommentAnchors();
+      }, ANCHOR_RECOMPUTE_DELAY);
+    };
+    anchorEditor.on('update', scheduleRecompute);
+    return () => {
+      anchorEditor.off('update', scheduleRecompute);
+      if (anchorTimerRef.current !== null) {
+        window.clearTimeout(anchorTimerRef.current);
+        anchorTimerRef.current = null;
+      }
+    };
+  }, [anchorEditor, recomputeCommentAnchors]);
+
+  useEffect(() => {
+    if (!anchorEditor) return;
+    const last = lastActiveScrollRef.current;
+    if (last.id === activeId && last.editor === anchorEditor) return;
+    lastActiveScrollRef.current = { id: activeId, editor: anchorEditor };
+    anchorEditor.commands.setActiveCommentAnchor(activeId);
+    if (!activeId) return;
+    const range = commentRangesRef.current.find((item) => item.id === activeId);
+    if (!range) return;
+    let viewportTop: number;
+    try {
+      viewportTop = anchorEditor.view.coordsAtPos(range.from).top;
+    } catch {
+      return;
+    }
+    const container = findScrollContainer(anchorEditor.view.dom);
+    const isDocument = container === document.scrollingElement || container === document.body;
+    const top = isDocument
+      ? window.scrollY + viewportTop - COMMENT_SCROLL_OFFSET
+      : container.scrollTop + viewportTop - container.getBoundingClientRect().top - COMMENT_SCROLL_OFFSET;
+    container.scrollTo({ top, behavior: 'smooth' });
+  }, [activeId, anchorEditor]);
+
+  const handleCommentClick = useCallback((id: string) => {
+    setActiveId(id);
+    openAside();
+  }, [setActiveId, openAside]);
 
   const flushBeforeSwitch = useCallback(async () => {
     clearSaveTimer();
@@ -729,6 +835,8 @@ export default function PageView() {
     setOutline({ headings: [], chars: 0, charsWithSpace: 0, paragraphs: 0 });
     setActiveHeadingId(null);
     setEditorReady(false);
+    setAnchorEditor(null);
+    commentRangesRef.current = [];
     publish(null);
   }, [clearSaveTimer, publish]);
 
@@ -1035,6 +1143,7 @@ export default function PageView() {
                 editorRef={editorRef}
                 onDirty={markDirty}
                 onReady={handleEditorReady}
+                onCommentClick={handleCommentClick}
               />
             ) : (
               <Center py={80}><Loader size="sm" /></Center>
