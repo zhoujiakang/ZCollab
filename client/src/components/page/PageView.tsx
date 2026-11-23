@@ -14,6 +14,7 @@ import {
   IconBlockquote,
   IconBold,
   IconCode,
+  IconDownload,
   IconH1,
   IconH2,
   IconH3,
@@ -36,6 +37,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useCollabDoc, type CollabStatus } from '../../collab/useCollabDoc';
 import { hasDocContent, parseDocContent } from '../../lib/docContent';
+import { docToMarkdown, downloadMarkdownFile } from '../../lib/markdownExport';
 import { getDocPath } from '../../lib/docTree';
 import { useAside, type AsideHeading } from '../layout/AsideContext';
 import ShareDialog from '../ShareDialog';
@@ -82,6 +84,14 @@ function notifyError(error: unknown) {
   notifications.show({
     color: 'red',
     title: '操作失败',
+    message: error instanceof Error ? error.message : '未知错误',
+  });
+}
+
+function notifyExportError(error: unknown) {
+  notifications.show({
+    color: 'red',
+    title: '导出失败',
     message: error instanceof Error ? error.message : '未知错误',
   });
 }
@@ -575,6 +585,7 @@ export default function PageView() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const [lastEditedAt, setLastEditedAt] = useState(() => new Date());
   const [shareOpened, setShareOpened] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const { ydoc, provider, status } = useCollabDoc(docId ?? null);
   const { publish } = useAside();
@@ -594,6 +605,7 @@ export default function PageView() {
   const timerRef = useRef<number | null>(null);
   const inFlightRef = useRef<Promise<void> | null>(null);
   const needsIndexRef = useRef(false);
+  const exportingRef = useRef(false);
 
   const clearSaveTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -876,6 +888,23 @@ export default function PageView() {
       ? [{ id: docId, parentDocId: null, title: selected?.title || '无标题' }]
       : [];
 
+  const handleExportMarkdown = useCallback(() => {
+    if (exportingRef.current || !selected || !editorRef.current) return;
+    exportingRef.current = true;
+    setExporting(true);
+    try {
+      const markdown = docToMarkdown(editorRef.current.getJSON());
+      downloadMarkdownFile(markdown, titleRef.current || selected.title);
+    } catch (error) {
+      notifyExportError(error);
+    } finally {
+      window.setTimeout(() => {
+        exportingRef.current = false;
+        if (mountedRef.current) setExporting(false);
+      }, 0);
+    }
+  }, [selected]);
+
   const handleDelete = async () => {
     if (!selected) return;
     if (!window.confirm(`确定删除「${selected.title || '无标题'}」及其所有子文档吗？`)) return;
@@ -928,6 +957,20 @@ export default function PageView() {
                 ) : (
                   <IconStar size={18} stroke={1.7} />
                 )}
+              </ActionIcon>
+            </span>
+          </Tooltip>
+          <Tooltip label="导出 Markdown" withArrow>
+            <span>
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                title="导出 Markdown"
+                aria-label="导出 Markdown"
+                disabled={!selected || !editorReady || exporting}
+                onClick={handleExportMarkdown}
+              >
+                <IconDownload size={18} stroke={1.7} />
               </ActionIcon>
             </span>
           </Tooltip>
