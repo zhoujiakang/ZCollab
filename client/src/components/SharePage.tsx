@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { Center, Container, Loader, Stack, Text } from '@mantine/core';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
 import { getPublicShare, type PublicShareDoc } from '../api/share';
 import { parseDocContent } from '../lib/docContent';
-import { Attachment } from './page/Attachment';
+import { createContentExtensions } from './page/contentExtensions';
 import editorClasses from './page/Editor.module.css';
 import classes from './SharePage.module.css';
 
@@ -13,8 +12,7 @@ function ReadOnlyBody({ content }: { content: string }) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ link: { openOnClick: false } }),
-      Image.configure({ inline: false, allowBase64: false }),
-      Attachment,
+      ...createContentExtensions(),
     ],
     content: parseDocContent(content),
     editable: false,

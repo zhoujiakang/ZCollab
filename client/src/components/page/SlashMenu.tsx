@@ -20,6 +20,7 @@ import {
   IconPaperclip,
   IconPhoto,
   IconQuote,
+  IconTable,
 } from '@tabler/icons-react';
 
 export type SlashUploadKind = 'image' | 'attachment';
@@ -93,6 +94,15 @@ export function createSlashCommands(onRequestUpload: OnRequestUpload): SlashComm
       keywords: ['hr', 'rule', 'divider', '分割线', '分隔线'],
       icon: <IconMinus size={18} stroke={1.7} />,
       action: (editor) => { editor.chain().focus().setHorizontalRule().run(); },
+    },
+    {
+      label: '表格',
+      description: '插入 3×3 表格，首行为表头',
+      keywords: ['table', 'grid', '表格'],
+      icon: <IconTable size={18} stroke={1.7} />,
+      action: (editor) => {
+        editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+      },
     },
     {
       label: '图片',

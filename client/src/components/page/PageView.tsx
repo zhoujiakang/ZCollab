@@ -4,7 +4,6 @@ import { ActionIcon, Center, Loader, Text, Tooltip } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
 import Collaboration from '@tiptap/extension-collaboration';
 import { CollaborationCaret as CollaborationCursor } from '@tiptap/extension-collaboration-caret';
 import type { WebsocketProvider } from 'y-websocket';
@@ -15,6 +14,9 @@ import {
   IconBlockquote,
   IconBold,
   IconCode,
+  IconColumnInsertLeft,
+  IconColumnInsertRight,
+  IconColumnRemove,
   IconH1,
   IconH2,
   IconH3,
@@ -24,10 +26,15 @@ import {
   IconMinus,
   IconPaperclip,
   IconPhoto,
+  IconRowInsertBottom,
+  IconRowInsertTop,
+  IconRowRemove,
   IconShare3,
   IconStar,
   IconStarFilled,
   IconStrikethrough,
+  IconTable,
+  IconTableRow,
   IconTrash,
 } from '@tabler/icons-react';
 import { claimSeedDoc, getDoc, updateDoc, visitDoc, type Doc } from '../../api/doc';
@@ -39,7 +46,7 @@ import { hasDocContent, parseDocContent } from '../../lib/docContent';
 import { getDocPath } from '../../lib/docTree';
 import { useAside, type AsideHeading } from '../layout/AsideContext';
 import ShareDialog from '../ShareDialog';
-import { Attachment } from './Attachment';
+import { createContentExtensions } from './contentExtensions';
 import { BlockHandle } from './BlockHandle';
 import { SlashCommand } from './SlashCommand';
 import type { SlashUploadKind } from './SlashMenu';
@@ -252,8 +259,7 @@ function CollabEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ undoRedo: false, link: { openOnClick: false } }),
-      Image.configure({ inline: false, allowBase64: false }),
-      Attachment,
+      ...createContentExtensions(),
       BlockHandle,
       slashCommand,
       Collaboration.configure({ document: ydoc, field: 'content' }),
@@ -468,6 +474,8 @@ function CollabEditor({
       orderedList: !!current?.isActive('orderedList'),
       blockquote: !!current?.isActive('blockquote'),
       codeBlock: !!current?.isActive('codeBlock'),
+      inTable: !!current?.isActive('table'),
+      inHeaderRow: !!current?.isActive('tableHeader'),
     }),
   });
 
@@ -484,6 +492,7 @@ function CollabEditor({
     { key: 'orderedList', label: '有序列表', icon: <IconListNumbers size={16} stroke={1.7} />, active: !!toolbar?.orderedList, action: () => editor.chain().focus().toggleOrderedList().run() },
     { key: 'blockquote', label: '引用', icon: <IconBlockquote size={16} stroke={1.7} />, active: !!toolbar?.blockquote, action: () => editor.chain().focus().toggleBlockquote().run() },
     { key: 'codeBlock', label: '代码块', icon: <IconCode size={16} stroke={1.7} />, active: !!toolbar?.codeBlock, action: () => editor.chain().focus().toggleCodeBlock().run() },
+    { key: 'table', label: '插入表格', icon: <IconTable size={16} stroke={1.7} />, active: !!toolbar?.inTable, action: () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
     { key: 'horizontalRule', label: '分割线', icon: <IconMinus size={16} stroke={1.7} />, active: false, action: () => editor.chain().focus().setHorizontalRule().run() },
     {
       key: 'image',
@@ -511,6 +520,17 @@ function CollabEditor({
     },
   ];
 
+  const tableActions = [
+    { key: 'addRowBefore', label: '上方加行', icon: <IconRowInsertTop size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().addRowBefore().run() },
+    { key: 'addRowAfter', label: '下方加行', icon: <IconRowInsertBottom size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().addRowAfter().run() },
+    { key: 'addColumnBefore', label: '左侧加列', icon: <IconColumnInsertLeft size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().addColumnBefore().run() },
+    { key: 'addColumnAfter', label: '右侧加列', icon: <IconColumnInsertRight size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().addColumnAfter().run() },
+    { key: 'deleteRow', label: '删行', icon: <IconRowRemove size={16} stroke={1.7} />, unavailable: !!toolbar?.inHeaderRow, action: () => editor.chain().focus().deleteRow().run() },
+    { key: 'deleteColumn', label: '删列', icon: <IconColumnRemove size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().deleteColumn().run() },
+    { key: 'toggleHeaderRow', label: '切换表头', icon: <IconTableRow size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().toggleHeaderRow().run() },
+    { key: 'deleteTable', label: '删除表格', icon: <IconTrash size={16} stroke={1.7} />, unavailable: false, action: () => editor.chain().focus().deleteTable().run() },
+  ];
+
   return (
     <>
       <div className={classes.toolbar}>
@@ -529,6 +549,27 @@ function CollabEditor({
             {item.icon}
           </ActionIcon>
         ))}
+      </div>
+      <div className={classes.tableToolbarSlot}>
+        {toolbar?.inTable && (
+          <div className={classes.tableToolbar} role="toolbar" aria-label="表格操作">
+            {tableActions.map((item) => (
+              <ActionIcon
+                key={item.key}
+                size="compact-md"
+                variant="subtle"
+                color="gray"
+                disabled={item.unavailable}
+                title={item.label}
+                aria-label={item.label}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={item.action}
+              >
+                {item.icon}
+              </ActionIcon>
+            ))}
+          </div>
+        )}
       </div>
       {waitingForSeed && <Text className={classes.loadingNote}>正在同步内容</Text>}
       <EditorContent editor={editor} />
