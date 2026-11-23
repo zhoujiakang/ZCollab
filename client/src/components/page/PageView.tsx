@@ -40,6 +40,8 @@ import { getDocPath } from '../../lib/docTree';
 import { useAside, type AsideHeading } from '../layout/AsideContext';
 import ShareDialog from '../ShareDialog';
 import { Attachment } from './Attachment';
+import { SlashCommand } from './SlashCommand';
+import type { SlashUploadKind } from './SlashMenu';
 import editorClasses from './Editor.module.css';
 import classes from './PageView.module.css';
 
@@ -229,14 +231,29 @@ function CollabEditor({
   const pendingPositionRef = useRef(0);
   const uploadingRef = useRef(false);
   const insertFileRef = useRef<(file: File, position: number) => void>(() => undefined);
+  const requestUploadRef = useRef<(kind: SlashUploadKind, position: number) => void>(() => undefined);
   const [uploadingKind, setUploadingKind] = useState<'image' | 'attachment' | null>(null);
   const uploading = uploadingKind !== null;
+
+  requestUploadRef.current = (kind, position) => {
+    pendingPositionRef.current = position;
+    if (kind === 'image') imageInputRef.current?.click();
+    else attachmentInputRef.current?.click();
+  };
+  const handleRequestUpload = useCallback((kind: SlashUploadKind, position: number) => {
+    requestUploadRef.current(kind, position);
+  }, []);
+  const slashCommand = useMemo(
+    () => SlashCommand.configure({ onRequestUpload: handleRequestUpload }),
+    [handleRequestUpload],
+  );
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ undoRedo: false, link: { openOnClick: false } }),
       Image.configure({ inline: false, allowBase64: false }),
       Attachment,
+      slashCommand,
       Collaboration.configure({ document: ydoc, field: 'content' }),
       CollaborationCursor.configure({
         provider,
@@ -245,6 +262,14 @@ function CollabEditor({
     ],
     editorProps: {
       attributes: { class: 'zcollab-editor', 'aria-label': '文档正文' },
+      handleClick: (_view, _pos, event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return false;
+        const link = target.closest('a[href]') as HTMLAnchorElement | null;
+        if (!link || !(event.metaKey || event.ctrlKey)) return false;
+        window.open(link.href, '_blank', 'noopener');
+        return true;
+      },
       handlePaste: (view, event) => {
         const file = Array.from(event.clipboardData?.files ?? [])[0];
         if (!file) return false;
@@ -270,7 +295,13 @@ function CollabEditor({
   }, [editor, editorRef]);
 
   const uploadAndInsert = useCallback(async (file: File, position: number) => {
-    if (uploadingRef.current) return;
+    if (uploadingRef.current) {
+      notifications.show({
+        color: 'orange',
+        message: '上一个文件还在上传，请稍候',
+      });
+      return;
+    }
 
     const kind = file.type.startsWith('image/') ? 'image' : 'attachment';
     uploadingRef.current = true;
