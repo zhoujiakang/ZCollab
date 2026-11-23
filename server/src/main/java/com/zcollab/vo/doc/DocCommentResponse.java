@@ -7,6 +7,8 @@ public record DocCommentResponse(
         Long id,
         Long parentId,
         String quote,
+        Integer anchorFrom,
+        Integer anchorTo,
         String body,
         CommentAuthorResponse author,
         OffsetDateTime createdAt,

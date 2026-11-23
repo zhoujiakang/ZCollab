@@ -226,6 +226,7 @@ public class DocCommentController {
         if (author == null) author = new CommentAuthorResponse(comment.getUserId(), "未知用户", null);
         boolean canDelete = isOwner || Objects.equals(comment.getUserId(), currentUserId);
         return new DocCommentResponse(comment.getId(), comment.getParentId(), comment.getQuote(),
+                comment.getAnchorFrom(), comment.getAnchorTo(),
                 comment.getBody(), author, comment.getCreatedAt(), comment.getResolvedAt(), canDelete, replies);
     }
 }
