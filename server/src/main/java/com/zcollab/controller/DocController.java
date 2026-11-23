@@ -16,6 +16,7 @@ import com.zcollab.vo.share.ShareCreateResponse;
 import com.zcollab.vo.share.ShareStatusResponse;
 import com.zcollab.exception.BusinessException;
 import com.zcollab.exception.ErrorCode;
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,6 +28,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/doc")
+@SaCheckLogin
 public class DocController {
 
     private final DocService docService;

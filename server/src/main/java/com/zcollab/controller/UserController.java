@@ -4,6 +4,7 @@ import com.zcollab.common.ApiResponse;
 import com.zcollab.dto.common.PageRequest;
 import com.zcollab.service.UserService;
 import com.zcollab.vo.user.CurrentUserResponse;
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/users")
+@SaCheckLogin
 public class UserController {
 
     private final UserService userService;

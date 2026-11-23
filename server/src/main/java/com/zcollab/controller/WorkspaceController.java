@@ -7,6 +7,7 @@ import com.zcollab.service.WorkspaceService;
 import com.zcollab.vo.workspace.CreateWorkspaceResponse;
 import com.zcollab.vo.workspace.WorkspaceInfoResponse;
 import com.zcollab.vo.workspace.WorkspaceSummaryResponse;
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/workspace")
+@SaCheckLogin
 public class WorkspaceController {
 
     private final WorkspaceService workspaceService;

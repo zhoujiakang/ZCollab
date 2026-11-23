@@ -7,6 +7,7 @@ import com.zcollab.dto.auth.RegisterRequest;
 import com.zcollab.vo.auth.LoginResponse;
 import com.zcollab.vo.auth.RegisterResponse;
 import com.zcollab.service.AuthService;
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,12 +35,14 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @SaCheckLogin
     public ApiResponse<Void> logout() {
         authService.logout();
         return ApiResponse.ok();
     }
 
     @PostMapping("/password")
+    @SaCheckLogin
     public ApiResponse<Void> changePassword(@RequestBody @Valid PasswordRequest request) {
         authService.changePassword(request);
         return ApiResponse.ok();

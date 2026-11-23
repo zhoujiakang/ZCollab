@@ -5,6 +5,7 @@ import com.zcollab.dto.doc.GetDocRequest;
 import com.zcollab.service.DocFavoriteVisitService;
 import com.zcollab.vo.doc.DocFavoriteResponse;
 import com.zcollab.vo.doc.DocRecentResponse;
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,6 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/doc")
+@SaCheckLogin
 public class DocFavoriteVisitController {
 
     private final DocFavoriteVisitService service;
