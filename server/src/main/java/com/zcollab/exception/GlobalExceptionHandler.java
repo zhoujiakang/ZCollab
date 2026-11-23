@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handleUploadSizeExceeded(MaxUploadSizeExceededException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.fail(ErrorCode.BAD_REQUEST, "图片大小不能超过 10MB"));
+                .body(ApiResponse.fail(ErrorCode.BAD_REQUEST, "文件大小超过限制（图片最大 10MB，附件最大 20MB）"));
     }
 
     @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})

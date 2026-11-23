@@ -22,6 +22,7 @@ import {
   IconList,
   IconListNumbers,
   IconMinus,
+  IconPaperclip,
   IconPhoto,
   IconShare3,
   IconStar,
@@ -30,7 +31,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { claimSeedDoc, getDoc, updateDoc, visitDoc, type Doc } from '../../api/doc';
-import { uploadImage } from '../../api/file';
+import { uploadFile } from '../../api/file';
 import { useAuth } from '../../context/AuthContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useCollabDoc, type CollabStatus } from '../../collab/useCollabDoc';
@@ -38,6 +39,7 @@ import { hasDocContent, parseDocContent } from '../../lib/docContent';
 import { getDocPath } from '../../lib/docTree';
 import { useAside, type AsideHeading } from '../layout/AsideContext';
 import ShareDialog from '../ShareDialog';
+import { Attachment } from './Attachment';
 import editorClasses from './Editor.module.css';
 import classes from './PageView.module.css';
 
@@ -222,16 +224,19 @@ function CollabEditor({
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const pendingPositionRef = useRef(0);
   const uploadingRef = useRef(false);
-  const insertImageRef = useRef<(file: File, position: number) => void>(() => undefined);
-  const [uploading, setUploading] = useState(false);
+  const insertFileRef = useRef<(file: File, position: number) => void>(() => undefined);
+  const [uploadingKind, setUploadingKind] = useState<'image' | 'attachment' | null>(null);
+  const uploading = uploadingKind !== null;
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ undoRedo: false }),
+      StarterKit.configure({ undoRedo: false, link: { openOnClick: false } }),
       Image.configure({ inline: false, allowBase64: false }),
+      Attachment,
       Collaboration.configure({ document: ydoc, field: 'content' }),
       CollaborationCursor.configure({
         provider,
@@ -240,20 +245,17 @@ function CollabEditor({
     ],
     editorProps: {
       attributes: { class: 'zcollab-editor', 'aria-label': '文档正文' },
-      handlePaste: (_view, event) => {
-        const file = Array.from(event.clipboardData?.files ?? [])
-          .find((item) => item.type.startsWith('image/'));
+      handlePaste: (view, event) => {
+        const file = Array.from(event.clipboardData?.files ?? [])[0];
         if (!file) return false;
-        const position = _view.state.selection.from;
-        insertImageRef.current(file, position);
+        insertFileRef.current(file, view.state.selection.from);
         return true;
       },
       handleDrop: (view, event) => {
-        const file = Array.from(event.dataTransfer?.files ?? [])
-          .find((item) => item.type.startsWith('image/'));
+        const file = Array.from(event.dataTransfer?.files ?? [])[0];
         if (!file) return false;
         const drop = view.posAtCoords({ left: event.clientX, top: event.clientY });
-        insertImageRef.current(file, drop?.pos ?? view.state.selection.from);
+        insertFileRef.current(file, drop?.pos ?? view.state.selection.from);
         return true;
       },
     },
@@ -269,34 +271,35 @@ function CollabEditor({
 
   const uploadAndInsert = useCallback(async (file: File, position: number) => {
     if (uploadingRef.current) return;
-    if (!file.type.startsWith('image/')) {
-      notifyError(new Error('仅支持图片文件'));
-      return;
-    }
 
+    const kind = file.type.startsWith('image/') ? 'image' : 'attachment';
     uploadingRef.current = true;
-    setUploading(true);
-    const notificationId = `image-upload-${Date.now()}-${Math.random()}`;
+    setUploadingKind(kind);
+    const notificationId = `file-upload-${Date.now()}-${Math.random()}`;
     notifications.show({
       id: notificationId,
       loading: true,
-      message: '正在上传图片…',
+      message: kind === 'image' ? '正在上传图片…' : '正在上传附件…',
       autoClose: false,
       withCloseButton: false,
     });
 
     try {
-      const { url } = await uploadImage(file);
-      const max = editor.state.doc.content.size;
-      editor.chain()
-        .focus()
-        .setTextSelection(Math.min(position, max))
-        .setImage({ src: url })
-        .run();
+      const result = await uploadFile(file);
+      const at = Math.min(position, editor.state.doc.content.size);
+      const chain = editor.chain().focus().setTextSelection(at);
+      if (result.kind === 'image') {
+        chain.setImage({ src: result.url }).run();
+      } else {
+        chain.insertContent({
+          type: 'attachment',
+          attrs: { url: result.url, name: result.name, size: result.size },
+        }).run();
+      }
       notifications.update({
         id: notificationId,
         color: 'green',
-        message: '图片已插入',
+        message: result.kind === 'image' ? '图片已插入' : '附件已插入',
         loading: false,
         autoClose: 2500,
       });
@@ -305,18 +308,18 @@ function CollabEditor({
         id: notificationId,
         color: 'red',
         title: '操作失败',
-        message: error instanceof Error ? error.message : '图片上传失败',
+        message: error instanceof Error ? error.message : '文件上传失败',
         loading: false,
         autoClose: 6000,
       });
     } finally {
       uploadingRef.current = false;
-      setUploading(false);
+      setUploadingKind(null);
     }
   }, [editor]);
 
   // editorProps 里只经 ref 调用，useEditor 的重建条件不受上传回调变化影响。
-  insertImageRef.current = (file, position) => { void uploadAndInsert(file, position); };
+  insertFileRef.current = (file, position) => { void uploadAndInsert(file, position); };
 
   // 旧文档迁移：只有服务端原子认领成功的一端负责把 doc.content 灌进 Yjs。
   const [waitingForSeed, setWaitingForSeed] = useState(false);
@@ -451,14 +454,26 @@ function CollabEditor({
     { key: 'horizontalRule', label: '分割线', icon: <IconMinus size={16} stroke={1.7} />, active: false, action: () => editor.chain().focus().setHorizontalRule().run() },
     {
       key: 'image',
-      label: uploading ? '正在上传图片…' : '插入图片',
-      icon: uploading ? <Loader size={16} /> : <IconPhoto size={16} stroke={1.7} />,
+      label: uploadingKind === 'image' ? '正在上传图片…' : '插入图片',
+      icon: uploadingKind === 'image' ? <Loader size={16} /> : <IconPhoto size={16} stroke={1.7} />,
       active: false,
       unavailable: uploading,
       action: () => {
         if (uploadingRef.current) return;
         pendingPositionRef.current = editor.state.selection.from;
-        fileInputRef.current?.click();
+        imageInputRef.current?.click();
+      },
+    },
+    {
+      key: 'attachment',
+      label: uploadingKind === 'attachment' ? '正在上传附件…' : '插入附件',
+      icon: uploadingKind === 'attachment' ? <Loader size={16} /> : <IconPaperclip size={16} stroke={1.7} />,
+      active: false,
+      unavailable: uploading,
+      action: () => {
+        if (uploadingRef.current) return;
+        pendingPositionRef.current = editor.state.selection.from;
+        attachmentInputRef.current?.click();
       },
     },
   ];
@@ -485,9 +500,19 @@ function CollabEditor({
       {waitingForSeed && <Text className={classes.loadingNote}>正在同步内容</Text>}
       <EditorContent editor={editor} />
       <input
-        ref={fileInputRef}
+        ref={imageInputRef}
         type="file"
         accept="image/*"
+        hidden
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          if (file) void uploadAndInsert(file, pendingPositionRef.current);
+          event.currentTarget.value = '';
+        }}
+      />
+      <input
+        ref={attachmentInputRef}
+        type="file"
         hidden
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];

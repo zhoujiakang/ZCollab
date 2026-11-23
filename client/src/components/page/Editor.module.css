@@ -110,6 +110,64 @@
   outline-offset: 2px;
 }
 
+.editor :global(.zcollab-editor .attachment-card) {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(100%, 480px);
+  padding: 10px 14px;
+  border: 1px solid var(--zc-border);
+  border-radius: 8px;
+  background-color: var(--mantine-color-default);
+  color: inherit;
+  text-decoration: none;
+  white-space: normal;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.editor :global(.zcollab-editor .attachment-card:hover) {
+  border-color: var(--mantine-primary-color-filled);
+  background-color: var(--mantine-color-default-hover);
+}
+
+.editor :global(.zcollab-editor .attachment-card-icon) {
+  display: inline-flex;
+  flex: none;
+  color: var(--mantine-primary-color-filled);
+}
+
+.editor :global(.zcollab-editor .attachment-card-body) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.editor :global(.zcollab-editor .attachment-card-name) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.editor :global(.zcollab-editor .attachment-card-size) {
+  color: var(--mantine-color-dimmed);
+  font-size: 12px;
+}
+
+.editor :global(.zcollab-editor .attachment-card-arrow) {
+  flex: none;
+  color: var(--mantine-color-dimmed);
+  font-size: 18px;
+}
+
+.editor :global(.zcollab-editor .attachment-card.ProseMirror-selectednode) {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
+
 .readonly :global(.zcollab-editor[contenteditable='false']) {
   cursor: default;
   caret-color: transparent;

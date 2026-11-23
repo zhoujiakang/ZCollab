@@ -5,16 +5,29 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import { getPublicShare, type PublicShareDoc } from '../api/share';
 import { parseDocContent } from '../lib/docContent';
+import { Attachment } from './page/Attachment';
 import editorClasses from './page/Editor.module.css';
 import classes from './SharePage.module.css';
 
 function ReadOnlyBody({ content }: { content: string }) {
   const editor = useEditor({
-    extensions: [StarterKit, Image.configure({ inline: false, allowBase64: false })],
+    extensions: [
+      StarterKit.configure({ link: { openOnClick: false } }),
+      Image.configure({ inline: false, allowBase64: false }),
+      Attachment,
+    ],
     content: parseDocContent(content),
     editable: false,
     editorProps: {
       attributes: { class: 'zcollab-editor', 'aria-label': '文档正文', tabindex: '-1' },
+      handleClick: (_view, _pos, event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return false;
+        const link = target.closest('a[href]') as HTMLAnchorElement | null;
+        if (!link || !(event.metaKey || event.ctrlKey)) return false;
+        window.open(link.href, '_blank', 'noopener');
+        return true;
+      },
     },
   });
   return <div className={`${editorClasses.editor} ${editorClasses.readonly}`}><EditorContent editor={editor} /></div>;

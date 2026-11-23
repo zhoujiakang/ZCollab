@@ -31,7 +31,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String location = Paths.get(uploadDir).toAbsolutePath().normalize().toUri().toString();
+        String location = resourceLocation(uploadDir);
         CacheControl immutable = new CacheControl() {
             @Override
             public String getHeaderValue() {
@@ -42,5 +42,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/files/**")
                 .addResourceLocations(location)
                 .setCacheControl(immutable);
+    }
+
+    /** 目录不存在时 toUri() 不带尾斜杠，Spring 会把最后一段当文件名，导致清空 uploads 后全部 404。 */
+    static String resourceLocation(String uploadDir) {
+        String uri = Paths.get(uploadDir).toAbsolutePath().normalize().toUri().toString();
+        return uri.endsWith("/") ? uri : uri + "/";
     }
 }
