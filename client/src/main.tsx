@@ -5,11 +5,14 @@ import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import './styles/global.css';
 import App from './App';
+import { ColorSchemeProvider } from './context/ColorSchemeContext';
 import { readStoredColorScheme, theme } from './theme';
 
 createRoot(document.getElementById('root')!).render(
   <MantineProvider theme={theme} defaultColorScheme={readStoredColorScheme()}>
     <Notifications />
-    <App />
+    <ColorSchemeProvider>
+      <App />
+    </ColorSchemeProvider>
   </MantineProvider>,
 );

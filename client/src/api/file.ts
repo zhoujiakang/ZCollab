@@ -20,3 +20,10 @@ export function uploadFile(file: File): Promise<UploadResult> {
     size: Number(payload.size) || 0,
   }));
 }
+
+export function uploadImage(file: File): Promise<UploadResult> {
+  return uploadFile(file).then((result) => {
+    if (result.kind !== 'image') throw new Error('仅支持上传图片');
+    return result;
+  });
+}

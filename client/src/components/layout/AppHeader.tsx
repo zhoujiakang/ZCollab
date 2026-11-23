@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ActionIcon, Menu, Tooltip, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
+import { ActionIcon, Menu, Tooltip, useComputedColorScheme } from '@mantine/core';
 import {
   IconChevronDown,
   IconLayoutSidebar,
@@ -8,15 +7,13 @@ import {
   IconLogout,
   IconMoon,
   IconSearch,
+  IconSettings,
   IconSun,
 } from '@tabler/icons-react';
 import { useAuth } from '../../context/AuthContext';
+import { useColorScheme } from '../../context/ColorSchemeContext';
 import { useOpenCommandPalette } from '../../context/CommandPaletteContext';
 import { isDocPagePath, useAside } from './AsideContext';
-import {
-  COLOR_SCHEME_STORAGE_KEY,
-  type StoredColorScheme,
-} from '../../theme';
 import classes from './AppHeader.module.css';
 
 interface AppHeaderProps {
@@ -30,27 +27,12 @@ export default function AppHeader({ onToggleSidebar }: AppHeaderProps) {
   const { opened: asideOpened, toggle: toggleAside } = useAside();
   const isDocRoute = isDocPagePath(location.pathname);
   const { user, logout } = useAuth();
-  const { setColorScheme } = useMantineColorScheme();
+  const { mode, setMode } = useColorScheme();
   const computedColorScheme = useComputedColorScheme();
-  const [mode, setMode] = useState<StoredColorScheme>(() => {
-    try {
-      const stored = window.localStorage.getItem(COLOR_SCHEME_STORAGE_KEY);
-      if (stored === 'auto' || stored === 'light' || stored === 'dark') return stored;
-    } catch {
-      // 忽略存储不可用的情况
-    }
-    return 'auto';
-  });
 
   const cycleColorScheme = () => {
-    const next: StoredColorScheme = mode === 'auto' ? 'light' : mode === 'light' ? 'dark' : 'auto';
+    const next = mode === 'auto' ? 'light' : mode === 'light' ? 'dark' : 'auto';
     setMode(next);
-    setColorScheme(next);
-    try {
-      window.localStorage.setItem(COLOR_SCHEME_STORAGE_KEY, next);
-    } catch {
-      // 忽略存储不可用的情况
-    }
   };
 
   const handleLogout = async () => {
@@ -113,6 +95,9 @@ export default function AppHeader({ onToggleSidebar }: AppHeaderProps) {
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Label>{user?.name || user?.username}</Menu.Label>
+            <Menu.Item leftSection={<IconSettings size={16} stroke={1.7} />} onClick={() => navigate('/settings')}>
+              账户设置
+            </Menu.Item>
             <Menu.Item leftSection={<IconLogout size={16} stroke={1.7} />} onClick={() => void handleLogout()}>
               登出
             </Menu.Item>

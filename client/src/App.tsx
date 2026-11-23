@@ -10,6 +10,7 @@ import { WorkspaceBridgeProvider, WorkspaceProvider } from './context/WorkspaceC
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
+import SettingsPage from './pages/SettingsPage';
 import WorkspaceOverviewPage from './pages/WorkspaceOverviewPage';
 import PageView from './components/page/PageView';
 
@@ -108,6 +109,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
       <Route path="/s/:token" element={<ShareRoute />} />
+      <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
       <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
         <Route path="/home" element={<HomePage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
