@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
 import SettingsPage from './pages/SettingsPage';
 import WorkspaceOverviewPage from './pages/WorkspaceOverviewPage';
+import WorkspaceSettingsPage from './pages/WorkspaceSettingsPage';
 import PageView from './components/page/PageView';
 
 function FullLoader() {
@@ -65,17 +66,17 @@ function WorkspaceRoute() {
   const { workspaceId } = useParams();
   const navigate = useNavigate();
   const { user, switchWorkspace } = useAuth();
-  const [checkedId, setCheckedId] = useState<string | null>(null);
+  const requestedRef = useRef<string | null>(null);
   const id = workspaceId!;
   const activeId = user?.activeWorkspace?.id;
 
   useEffect(() => {
     if (activeId === id) {
-      setCheckedId(id);
+      requestedRef.current = null;
       return;
     }
-    if (checkedId === id) return;
-    setCheckedId(id);
+    if (requestedRef.current === id) return;
+    requestedRef.current = id;
     let active = true;
     void switchWorkspace(id)
       .then((me) => {
@@ -93,9 +94,9 @@ function WorkspaceRoute() {
     return () => {
       active = false;
     };
-  }, [id, activeId, checkedId, switchWorkspace, navigate]);
+  }, [id, activeId, switchWorkspace, navigate]);
 
-  if (activeId !== id || checkedId !== id) return <FullLoader />;
+  if (activeId !== id) return <FullLoader />;
 
   return (
     <WorkspaceProvider workspaceId={id}>
@@ -119,6 +120,7 @@ function AppRoutes() {
           <Route index element={<WorkspaceOverviewPage />} />
           <Route path="p/:docId" element={<PageView />} />
         </Route>
+        <Route path="/w/:workspaceId/settings" element={<WorkspaceSettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>

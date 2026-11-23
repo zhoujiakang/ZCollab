@@ -28,6 +28,8 @@ public interface WorkspaceMemberService {
 
     void removeMember(Long userId);
 
+    void transferOwner(Long userId);
+
     Long currentWorkspaceId();
 
     WorkspaceMembership requireCurrentMembership();

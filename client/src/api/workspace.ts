@@ -58,3 +58,11 @@ export function inviteMember(username: string): Promise<Member> {
 export function removeMember(userId: string): Promise<void> {
   return apiPostVoid('/workspace/members/remove', { userId });
 }
+
+export function renameWorkspace(name: string): Promise<WorkspaceInfo> {
+  return apiPost<WorkspaceInfo>('/workspace/rename', { name });
+}
+
+export function transferOwner(userId: string): Promise<void> {
+  return apiPostVoid('/workspace/members/transfer', { userId });
+}

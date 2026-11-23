@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Badge, Button, Group, Text, TextInput, Title } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { fetchMembers, inviteMember, removeMember, type Member } from '../api/workspace';
+import { fetchMembers, type Member } from '../api/workspace';
 import { useAuth } from '../context/AuthContext';
 import classes from './pages.module.css';
 
@@ -30,17 +30,13 @@ async function fetchAllMembers(): Promise<Member[]> {
 export default function HomePage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, createWorkspace, refreshMe, logout } = useAuth();
+  const { user, createWorkspace } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
-  const [inviteName, setInviteName] = useState('');
-  const [inviting, setInviting] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [busy, setBusy] = useState(false);
 
   const activeWorkspace = user!.activeWorkspace;
-  const isOwner = activeWorkspace?.role === 'owner';
-  const isSelf = (id: string) => String(id) === String(user!.id);
 
   const refreshMembers = useCallback(async () => {
     setMembersLoading(true);
@@ -62,22 +58,6 @@ export default function HomePage() {
     document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: 'smooth' });
   }, [location.hash]);
 
-  const handleInvite = async () => {
-    const username = inviteName.trim();
-    if (!username || inviting) return;
-    setInviting(true);
-    try {
-      await inviteMember(username);
-      setInviteName('');
-      await refreshMembers();
-      notifications.show({ color: 'green', title: '邀请成功', message: `${username} 已加入工作区` });
-    } catch (error) {
-      notifyError(error);
-    } finally {
-      setInviting(false);
-    }
-  };
-
   const handleCreateWorkspace = async () => {
     const name = newWorkspaceName.trim();
     if (!name || busy) return;
@@ -91,39 +71,6 @@ export default function HomePage() {
       notifyError(error);
     } finally {
       setBusy(false);
-    }
-  };
-
-  const handleRemove = async (member: Member) => {
-    const self = isSelf(member.id);
-    setBusy(true);
-    try {
-      await removeMember(String(member.id));
-      if (self) {
-        const me = await refreshMe();
-        if (me.activeWorkspace) navigate(`/w/${me.activeWorkspace.id}`);
-        else navigate('/onboarding');
-      } else {
-        await refreshMembers();
-      }
-      notifications.show({
-        color: 'green',
-        title: self ? '已退出' : '已移除',
-        message: self ? '你已退出该工作区' : `${member.name || member.username} 已移除`,
-      });
-    } catch (error) {
-      notifyError(error);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/login', { replace: true });
-    } catch (error) {
-      notifyError(error);
     }
   };
 
@@ -171,7 +118,16 @@ export default function HomePage() {
       <section id="members" className={classes.section}>
         <div className={classes.sectionHead}>
           <Title order={4}>成员</Title>
-          <Text className={classes.muted}>{membersLoading ? '加载中…' : `${members.length} 人`}</Text>
+          <Group gap="sm" wrap="nowrap">
+            <Text className={classes.muted}>{membersLoading ? '加载中…' : `${members.length} 人`}</Text>
+            <Button
+              size="compact-sm"
+              variant="light"
+              onClick={() => navigate(activeWorkspace ? `/w/${activeWorkspace.id}/settings` : '/home#spaces')}
+            >
+              管理工作区
+            </Button>
+          </Group>
         </div>
         <div className={classes.card}>
           <div className={classes.stack}>
@@ -186,50 +142,9 @@ export default function HomePage() {
                     {member.role === 'owner' ? '所有者' : '成员'}
                   </Badge>
                 </Group>
-                {(isOwner && !isSelf(member.id)) || (!isOwner && isSelf(member.id)) ? (
-                  <Button
-                    size="compact-xs"
-                    variant="subtle"
-                    color="red"
-                    loading={busy}
-                    onClick={() => void handleRemove(member)}
-                  >
-                    {isSelf(member.id) ? '退出' : '移除'}
-                  </Button>
-                ) : null}
               </div>
             ))}
           </div>
-          <form
-            className={classes.inviteForm}
-            onSubmit={(event) => {
-              event.preventDefault();
-              void handleInvite();
-            }}
-          >
-            <Group gap="xs" wrap="nowrap">
-              <TextInput
-                className={classes.grow}
-                aria-label="邀请账号"
-                placeholder="输入账号，回车邀请"
-                value={inviteName}
-                onChange={(event) => setInviteName(event.currentTarget.value)}
-                disabled={inviting}
-              />
-              <Button type="submit" loading={inviting}>邀请</Button>
-            </Group>
-          </form>
-        </div>
-      </section>
-
-      <section id="settings" className={classes.section}>
-        <div className={classes.sectionHead}>
-          <Title order={4}>设置</Title>
-        </div>
-        <div className={classes.card}>
-          <Text size="sm">当前工作区：{activeWorkspace?.name}</Text>
-          <Text className={classes.muted}>你的角色：{activeWorkspace?.role === 'owner' ? '所有者' : '成员'}</Text>
-          <Button mt="md" variant="subtle" onClick={() => void handleLogout()}>登出</Button>
         </div>
       </section>
     </div>

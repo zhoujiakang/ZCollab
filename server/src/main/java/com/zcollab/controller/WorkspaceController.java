@@ -2,6 +2,7 @@ package com.zcollab.controller;
 
 import com.zcollab.common.ApiResponse;
 import com.zcollab.dto.workspace.CreateWorkspaceRequest;
+import com.zcollab.dto.workspace.RenameWorkspaceRequest;
 import com.zcollab.dto.workspace.SwitchWorkspaceRequest;
 import com.zcollab.service.WorkspaceService;
 import com.zcollab.vo.workspace.CreateWorkspaceResponse;
@@ -38,5 +39,10 @@ public class WorkspaceController {
     @PostMapping("/info")
     public ApiResponse<WorkspaceInfoResponse> info() {
         return ApiResponse.ok(workspaceService.info());
+    }
+
+    @PostMapping("/rename")
+    public ApiResponse<WorkspaceInfoResponse> rename(@RequestBody @Valid RenameWorkspaceRequest request) {
+        return ApiResponse.ok(workspaceService.rename(request.getName()));
     }
 }

@@ -25,10 +25,17 @@ function unwrap<T>(envelope: ApiResponse<T>): T {
   return envelope.data;
 }
 
+export class ApiError extends Error {
+  constructor(message: string, readonly status?: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 function rethrow(error: unknown): never {
   if (axios.isAxiosError<ApiResponse<unknown>>(error) && error.response?.data) {
     const payload = error.response.data;
-    throw new Error(payload.message || `请求失败（HTTP ${error.response.status}）`);
+    throw new ApiError(payload.message || `请求失败（HTTP ${error.response.status}）`, error.response.status);
   }
   throw error;
 }

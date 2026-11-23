@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Avatar,
   Box,
@@ -7,7 +7,6 @@ import {
   Card,
   Divider,
   Group,
-  NavLink,
   PasswordInput,
   SegmentedControl,
   Stack,
@@ -16,7 +15,8 @@ import {
   Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconLogout, IconPalette, IconUser } from '@tabler/icons-react';
+import { IconLogout, IconPalette, IconUser } from '@tabler/icons-react';
+import SettingsShell from '../components/settings/SettingsShell';
 import { uploadImage } from '../api/file';
 import { changePassword, updateProfile } from '../api/user';
 import { useAuth } from '../context/AuthContext';
@@ -36,7 +36,6 @@ function errorMessage(error: unknown) {
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, refreshMe, logout } = useAuth();
   const { mode, setMode } = useColorScheme();
   const [section, setSection] = useState<Section>('account');
@@ -56,11 +55,6 @@ export default function SettingsPage() {
   }, [currentName]);
 
   if (!user) return null;
-
-  const handleBack = () => {
-    if (location.key === 'default') navigate('/home');
-    else navigate(-1);
-  };
 
   const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -134,46 +128,17 @@ export default function SettingsPage() {
   };
 
   return (
-    <Box style={{ minHeight: '100vh' }}>
-      <Group
-        gap="sm"
-        px="lg"
-        style={{ height: 56, borderBottom: '1px solid var(--mantine-color-default-border)' }}
-      >
-        <Button
-          variant="subtle"
-          px="xs"
-          leftSection={<IconArrowLeft size={18} stroke={1.7} />}
-          onClick={handleBack}
-        >
-          返回
-        </Button>
-        <Title order={4}>设置</Title>
-      </Group>
-
-      <Group
-        align="flex-start"
-        gap="xl"
-        wrap="nowrap"
-        style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}
-      >
-        <Box style={{ flex: '0 0 180px', width: 180 }}>
-          <NavLink
-            label="账户"
-            leftSection={<IconUser size={18} stroke={1.7} />}
-            active={section === 'account'}
-            onClick={() => setSection('account')}
-          />
-          <NavLink
-            label="外观"
-            leftSection={<IconPalette size={18} stroke={1.7} />}
-            active={section === 'appearance'}
-            onClick={() => setSection('appearance')}
-          />
-        </Box>
-
-        <Box style={{ flex: 1, minWidth: 0, maxWidth: 720 }}>
-          {section === 'account' ? (
+    <SettingsShell
+      title="设置"
+      backTo="/home"
+      items={[
+        { key: 'account', label: '账户', icon: <IconUser size={18} stroke={1.7} /> },
+        { key: 'appearance', label: '外观', icon: <IconPalette size={18} stroke={1.7} /> },
+      ]}
+      active={section}
+      onSelect={(key) => setSection(key as Section)}
+    >
+      {section === 'account' ? (
             <Stack gap="lg">
               <Card withBorder radius="md" padding="lg">
                 <Stack gap="md">
@@ -315,9 +280,7 @@ export default function SettingsPage() {
                 <Text size="xs" c="dimmed">切换立即生效，无需保存。</Text>
               </Stack>
             </Card>
-          )}
-        </Box>
-      </Group>
-    </Box>
+      )}
+    </SettingsShell>
   );
 }

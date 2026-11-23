@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UnstyledButton } from '@mantine/core';
 import { IconApps, IconHome, IconSettings, IconUserPlus } from '@tabler/icons-react';
+import { useAuth } from '../../context/AuthContext';
 import classes from './Sidebar.module.css';
 
 interface MenuEntryProps {
@@ -23,7 +24,9 @@ function MenuEntry({ label, icon, active, onClick }: MenuEntryProps) {
 export default function GlobalSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const isHome = location.pathname === '/home';
+  const activeWorkspace = user?.activeWorkspace;
 
   return (
     <div className={classes.navbar}>
@@ -56,7 +59,7 @@ export default function GlobalSidebar() {
           <MenuEntry
             label="设置"
             icon={<IconSettings size={18} stroke={1.7} />}
-            onClick={() => navigate('/home#settings')}
+            onClick={() => navigate(activeWorkspace ? `/w/${activeWorkspace.id}/settings` : '/home#settings')}
           />
         </div>
       </div>

@@ -16,6 +16,8 @@ public interface WorkspaceService {
 
     WorkspaceInfoResponse info();
 
+    WorkspaceInfoResponse rename(String rawName);
+
     List<WorkspaceSummaryResponse> myWorkspaces(long userId);
 
     PageResponse<WorkspaceSummaryResponse> myWorkspacePage(long userId, PageRequest request);

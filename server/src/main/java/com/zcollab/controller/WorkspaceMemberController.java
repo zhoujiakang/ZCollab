@@ -40,4 +40,10 @@ public class WorkspaceMemberController {
         workspaceMemberService.removeMember(request.getUserId());
         return ApiResponse.ok();
     }
+
+    @PostMapping("/members/transfer")
+    public ApiResponse<Void> transferOwner(@RequestBody @Valid RemoveMemberRequest request) {
+        workspaceMemberService.transferOwner(request.getUserId());
+        return ApiResponse.ok();
+    }
 }

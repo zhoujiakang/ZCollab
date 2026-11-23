@@ -2,6 +2,7 @@ package com.zcollab.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.zcollab.context.WorkspaceContext;
 import com.zcollab.dto.common.PageRequest;
 import com.zcollab.entity.WorkspaceMember;
@@ -18,6 +19,7 @@ import com.zcollab.vo.workspace.WorkspaceMembership;
 import com.zcollab.vo.workspace.WorkspaceSummaryResponse;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -139,6 +141,34 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService {
         if (userId == currentUserId) {
             workspaceContext.clearActiveWorkspaceId();
         }
+    }
+
+    @Override
+    @Transactional
+    public void transferOwner(Long userId) {
+        WorkspaceMembership membership = requireCurrentMembership();
+        if (!"owner".equals(membership.role())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+        long currentUserId = StpUtil.getLoginIdAsLong();
+        if (userId != null && userId == currentUserId) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST);
+        }
+        WorkspaceMember target = findMember(membership.workspaceId(), userId);
+        if (target == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND);
+        }
+        if (!"member".equals(target.getRole())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST);
+        }
+
+        workspaceMemberMapper.update(null, new LambdaUpdateWrapper<WorkspaceMember>()
+                .set(WorkspaceMember::getRole, "member")
+                .eq(WorkspaceMember::getWorkspaceId, membership.workspaceId())
+                .eq(WorkspaceMember::getUserId, currentUserId));
+        workspaceMemberMapper.update(null, new LambdaUpdateWrapper<WorkspaceMember>()
+                .set(WorkspaceMember::getRole, "owner")
+                .eq(WorkspaceMember::getId, target.getId()));
     }
 
     @Override

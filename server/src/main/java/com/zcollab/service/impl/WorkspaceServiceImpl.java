@@ -1,6 +1,7 @@
 package com.zcollab.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.zcollab.context.WorkspaceContext;
 import com.zcollab.dto.common.PageRequest;
 import com.zcollab.entity.Workspace;
@@ -74,6 +75,22 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         }
         return new WorkspaceInfoResponse(workspace.getId(), workspace.getName(), membership.role(),
                 workspaceMemberService.countByWorkspace(workspace.getId()));
+    }
+
+    @Override
+    public WorkspaceInfoResponse rename(String rawName) {
+        WorkspaceMembership membership = workspaceMemberService.requireCurrentMembership();
+        if (!"owner".equals(membership.role())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+        String name = rawName == null ? "" : rawName.trim();
+        if (name.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST);
+        }
+        workspaceMapper.update(null, new LambdaUpdateWrapper<Workspace>()
+                .set(Workspace::getName, name)
+                .eq(Workspace::getId, membership.workspaceId()));
+        return info();
     }
 
     @Override
