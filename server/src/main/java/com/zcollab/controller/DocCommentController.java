@@ -201,7 +201,7 @@ public class DocCommentController {
     private Map<Long, CommentAuthorResponse> loadAuthors(List<DocComment> comments) {
         if (comments.isEmpty()) return Map.of();
         Set<Long> userIds = comments.stream().map(DocComment::getUserId).collect(Collectors.toSet());
-        Map<Long, User> users = userMapper.selectBatchIds(userIds).stream()
+        Map<Long, User> users = userMapper.selectByIds(userIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity(), (a, b) -> a));
         Map<Long, CommentAuthorResponse> authors = new HashMap<>();
         for (Long userId : userIds) {
@@ -211,8 +211,8 @@ public class DocCommentController {
     }
 
     private CommentAuthorResponse authorOf(long userId) {
-        List<User> users = userMapper.selectBatchIds(List.of(userId));
-        return toAuthor(users.isEmpty() ? null : users.get(0), userId);
+        List<User> users = userMapper.selectByIds(List.of(userId));
+        return toAuthor(users.isEmpty() ? null : users.getFirst(), userId);
     }
 
     private CommentAuthorResponse toAuthor(User user, Long userId) {
