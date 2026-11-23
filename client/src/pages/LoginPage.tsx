@@ -14,10 +14,10 @@ export default function LoginPage() {
     try {
       const me = await login(values.username, values.password);
       notifications.show({ color: 'green', title: '登录成功', message: '欢迎回来' });
-      if (me.workspaces.items.length === 0) {
-        navigate('/onboarding', { replace: true });
-      } else if (from && from.startsWith('/')) {
+      if (from && from.startsWith('/')) {
         navigate(from, { replace: true });
+      } else if (me.workspaces.items.length === 0) {
+        navigate('/onboarding', { replace: true });
       } else {
         navigate(me.activeWorkspace ? `/w/${me.activeWorkspace.id}` : '/home', { replace: true });
       }

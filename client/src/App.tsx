@@ -8,6 +8,7 @@ import SharePage from './components/SharePage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WorkspaceBridgeProvider, WorkspaceProvider } from './context/WorkspaceContext';
 import HomePage from './pages/HomePage';
+import InvitePage from './pages/InvitePage';
 import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
 import SettingsPage from './pages/SettingsPage';
@@ -48,8 +49,11 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
 function LoginRoute() {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <FullLoader />;
   if (!user) return <LoginPage />;
+  const from = (location.state as { from?: string } | null)?.from;
+  if (from && from.startsWith('/')) return <Navigate to={from} replace />;
   return <Navigate
     to={user.activeWorkspace ? `/w/${user.activeWorkspace.id}` : user.workspaces.items.length ? '/home' : '/onboarding'}
     replace
@@ -60,6 +64,12 @@ function ShareRoute() {
   const { token } = useParams();
   if (!token) return <Navigate to="/home" replace />;
   return <SharePage token={token} />;
+}
+
+function InviteRoute() {
+  const { token } = useParams();
+  if (!token) return <Navigate to="/home" replace />;
+  return <InvitePage token={token} />;
 }
 
 function WorkspaceRoute() {
@@ -112,6 +122,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
       <Route path="/s/:token" element={<ShareRoute />} />
+      <Route path="/invite/:token" element={<InviteRoute />} />
       <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
       <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
         <Route path="/home" element={<HomePage />} />

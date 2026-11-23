@@ -55,7 +55,7 @@ export default function GlobalSidebar() {
           <MenuEntry
             label="邀请成员"
             icon={<IconUserPlus size={18} stroke={1.7} />}
-            onClick={() => navigate('/home#members')}
+            onClick={() => navigate(settingsWorkspaceId ? `/w/${settingsWorkspaceId}/settings#members` : '/home#members')}
           />
           {settingsWorkspaceId && (
             <MenuEntry

@@ -66,3 +66,29 @@ export function renameWorkspace(name: string): Promise<WorkspaceInfo> {
 export function transferOwner(userId: string): Promise<void> {
   return apiPostVoid('/workspace/members/transfer', { userId });
 }
+
+export interface Invite {
+  id: string;
+  token: string;
+  path: string;
+  createdBy: string;
+  creatorName: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export function createInvite(expiresInDays: number | null): Promise<Invite> {
+  return apiPost<Invite>('/workspace/invites', { expiresInDays });
+}
+
+export function fetchInvites(): Promise<Invite[]> {
+  return apiPost<Invite[]>('/workspace/invites/list');
+}
+
+export function revokeInvite(id: string): Promise<void> {
+  return apiPostVoid('/workspace/invites/revoke', { id });
+}
+
+export function acceptInvite(token: string): Promise<WorkspaceSummary> {
+  return apiPost<WorkspaceSummary>('/workspace/invites/accept', { token });
+}

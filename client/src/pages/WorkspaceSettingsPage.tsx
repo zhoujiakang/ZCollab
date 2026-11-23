@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Avatar,
   Badge,
@@ -10,6 +10,7 @@ import {
   Group,
   Loader,
   Modal,
+  SegmentedControl,
   Stack,
   Text,
   TextInput,
@@ -20,12 +21,16 @@ import { notifications } from '@mantine/notifications';
 import { IconBuilding, IconUsers } from '@tabler/icons-react';
 import { ApiError } from '../api/client';
 import {
+  createInvite,
+  fetchInvites,
   fetchMembers,
   fetchWorkspaceInfo,
   inviteMember,
   removeMember,
   renameWorkspace,
+  revokeInvite,
   transferOwner,
+  type Invite,
   type Member,
   type WorkspaceInfo,
 } from '../api/workspace';
@@ -51,11 +56,18 @@ function isSelf(id: string, userId: string) {
   return String(id) === String(userId);
 }
 
+function inviteExpiryText(invite: Invite): string {
+  if (!invite.expiresAt) return '长期有效';
+  const days = Math.ceil((new Date(invite.expiresAt).getTime() - Date.now()) / 86_400_000);
+  return `${days} 天后过期`;
+}
+
 export default function WorkspaceSettingsPage() {
   const { workspaceId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, refreshMe } = useAuth();
-  const [section, setSection] = useState<Section>('general');
+  const [section, setSection] = useState<Section>(location.hash === '#members' ? 'members' : 'general');
   const [info, setInfo] = useState<WorkspaceInfo | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [total, setTotal] = useState(0);
@@ -67,6 +79,10 @@ export default function WorkspaceSettingsPage() {
   const [addBusy, setAddBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
+  const [inviteDays, setInviteDays] = useState('7');
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [copyFallback, setCopyFallback] = useState<string | null>(null);
 
   const isOwner = info?.role === 'owner';
 
@@ -89,9 +105,15 @@ export default function WorkspaceSettingsPage() {
     setTotal(page.total);
   }, []);
 
+  const reloadInvites = useCallback(async () => {
+    setInvites(await fetchInvites());
+  }, []);
+
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [infoResult, membersResult] = await Promise.allSettled([reloadInfo(), reloadMembers()]);
+    const [infoResult, membersResult, invitesResult] = await Promise.allSettled([
+      reloadInfo(), reloadMembers(), reloadInvites(),
+    ]);
     if (infoResult.status === 'rejected' && membersResult.status === 'rejected') {
       setLoadError(true);
       notifyError(infoResult.reason);
@@ -99,13 +121,51 @@ export default function WorkspaceSettingsPage() {
       setLoadError(false);
       if (infoResult.status === 'rejected') notifyError(infoResult.reason);
       if (membersResult.status === 'rejected') notifyError(membersResult.reason);
+      if (invitesResult.status === 'rejected') notifyError(invitesResult.reason);
     }
     setLoading(false);
-  }, [reloadInfo, reloadMembers]);
+  }, [reloadInfo, reloadMembers, reloadInvites]);
 
   useEffect(() => {
     void loadAll();
   }, [loadAll]);
+
+  const handleCreateInvite = async () => {
+    setInviteBusy(true);
+    try {
+      await createInvite(Number(inviteDays));
+      await reloadInvites();
+      notifications.show({ color: 'green', title: '已生成', message: '邀请链接已生成，可以复制分享' });
+    } catch (error) {
+      notifyError(error);
+    } finally {
+      setInviteBusy(false);
+    }
+  };
+
+  const handleRevokeInvite = async (id: string) => {
+    setInviteBusy(true);
+    try {
+      await revokeInvite(id);
+      await reloadInvites();
+      notifications.show({ color: 'green', title: '已吊销', message: '该邀请链接已失效' });
+    } catch (error) {
+      notifyError(error);
+    } finally {
+      setInviteBusy(false);
+    }
+  };
+
+  const handleCopyInvite = async (invite: Invite) => {
+    const url = `${window.location.origin}${invite.path}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopyFallback(null);
+      notifications.show({ color: 'green', title: '已复制', message: url });
+    } catch {
+      setCopyFallback(invite.id);
+    }
+  };
 
   const handleRename = async () => {
     const nextName = name.trim();
@@ -315,6 +375,65 @@ export default function WorkspaceSettingsPage() {
         </Stack>
       ) : (
         <Stack gap="lg">
+          <Card withBorder radius="md" padding="lg">
+            <Stack gap="md">
+              <Title order={5}>邀请链接</Title>
+              <Divider />
+              <Group gap="xs" wrap="nowrap">
+                <SegmentedControl
+                  size="xs"
+                  value={inviteDays}
+                  onChange={setInviteDays}
+                  data={[
+                    { value: '7', label: '7 天' },
+                    { value: '30', label: '30 天' },
+                    { value: '0', label: '永不过期' },
+                  ]}
+                />
+                <Button size="compact-sm" loading={inviteBusy} onClick={() => void handleCreateInvite()}>
+                  生成链接
+                </Button>
+              </Group>
+              {invites.length === 0 ? (
+                <Text size="sm" c="dimmed">暂无有效邀请链接</Text>
+              ) : invites.map((invite) => (
+                <Stack
+                  key={invite.id}
+                  gap={6}
+                  style={{ padding: '6px 0', borderBottom: '1px solid var(--mantine-color-default-border)' }}
+                >
+                  <Group justify="space-between" gap="sm" wrap="nowrap">
+                    <Text size="sm">{invite.creatorName || '成员'} 创建 · {inviteExpiryText(invite)}</Text>
+                    <Group gap="xs" wrap="nowrap">
+                      <Button size="compact-xs" variant="subtle" onClick={() => void handleCopyInvite(invite)}>
+                        复制
+                      </Button>
+                      {(isOwner || isSelf(invite.createdBy, user?.id ?? '')) && (
+                        <Button
+                          size="compact-xs"
+                          variant="subtle"
+                          color="red"
+                          loading={inviteBusy}
+                          onClick={() => void handleRevokeInvite(invite.id)}
+                        >
+                          吊销
+                        </Button>
+                      )}
+                    </Group>
+                  </Group>
+                  {copyFallback === invite.id && (
+                    <TextInput
+                      aria-label="邀请链接"
+                      readOnly
+                      value={`${window.location.origin}${invite.path}`}
+                      onClick={(event) => event.currentTarget.select()}
+                    />
+                  )}
+                </Stack>
+              ))}
+            </Stack>
+          </Card>
+
           <Card withBorder radius="md" padding="lg">
             <Stack gap="md">
               <Title order={5}>添加成员</Title>
