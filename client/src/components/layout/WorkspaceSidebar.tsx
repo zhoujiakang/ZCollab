@@ -1,10 +1,11 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ActionIcon, Menu, Text, Tooltip, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
   IconChevronsDown,
   IconClock,
+  IconFileImport,
   IconHome,
   IconPlus,
   IconSearch,
@@ -15,6 +16,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useOpenCommandPalette } from '../../context/CommandPaletteContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import { importDoc } from '../../api/doc';
+import { markdownToDoc } from '../../lib/markdownImport';
 import PageTree from '../page/PageTree';
 import classes from './Sidebar.module.css';
 
@@ -22,12 +25,17 @@ interface MenuEntryProps {
   label: string;
   icon: ReactNode;
   active?: boolean;
+  disabled?: boolean;
   onClick: () => void;
 }
 
-function MenuEntry({ label, icon, active, onClick }: MenuEntryProps) {
+function MenuEntry({ label, icon, active, disabled, onClick }: MenuEntryProps) {
   return (
-    <UnstyledButton className={`${classes.menu} ${active ? classes.menuActive : ''}`} onClick={onClick}>
+    <UnstyledButton
+      className={`${classes.menu} ${active ? classes.menuActive : ''}`}
+      disabled={disabled}
+      onClick={onClick}
+    >
       <span className={classes.menuIcon}>{icon}</span>
       <span className={classes.menuLabel}>{label}</span>
     </UnstyledButton>
@@ -97,10 +105,12 @@ export default function WorkspaceSidebar() {
   const location = useLocation();
   const { user } = useAuth();
   const {
-    workspaceId, docs, loadingDocs, favorites, recent, create, remove, flushPendingSave, toggleFavorite,
+    workspaceId, docs, loadingDocs, favorites, recent, create, remove, reloadDocs,
+    flushPendingSave, toggleFavorite,
   } = useWorkspace();
   const [collapseAllSignal, setCollapseAllSignal] = useState(0);
   const [busy, setBusy] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentDocId = /^\/w\/[^/]+\/p\/([^/]+)/.exec(location.pathname)?.[1];
   const isOverview = location.pathname === `/w/${workspaceId}`;
@@ -116,6 +126,38 @@ export default function WorkspaceSidebar() {
       notifications.show({
         color: 'red',
         title: '操作失败',
+        message: error instanceof Error ? error.message : '未知错误',
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleImportFile = async (file: File) => {
+    if (busy) return;
+    if (file.size > 2 * 1024 * 1024) {
+      notifications.show({ color: 'red', title: '导入失败', message: '文件过大' });
+      return;
+    }
+    setBusy(true);
+    try {
+      await flushPendingSave();
+      const md = await file.text();
+      const { json, text } = markdownToDoc(md);
+      const title = file.name.replace(/\.(md|markdown)$/i, '') || '未命名文档';
+      const doc = await importDoc({
+        title,
+        parentId: null,
+        content: JSON.stringify(json),
+        contentText: text,
+      });
+      await reloadDocs();
+      navigate(`/w/${workspaceId}/p/${doc.id}`);
+      notifications.show({ color: 'green', title: '导入成功', message: `已创建「${doc.title}」` });
+    } catch (error) {
+      notifications.show({
+        color: 'red',
+        title: '导入失败',
         message: error instanceof Error ? error.message : '未知错误',
       });
     } finally {
@@ -149,6 +191,18 @@ export default function WorkspaceSidebar() {
 
   return (
     <div className={classes.navbar}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".md,.markdown"
+        aria-label="导入 Markdown 文件"
+        style={{ display: 'none' }}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (file) void handleImportFile(file);
+        }}
+      />
       <div className={classes.section}>
         <Menu position="bottom-start" width={260} shadow="md">
           <Menu.Target>
@@ -192,7 +246,14 @@ export default function WorkspaceSidebar() {
           <MenuEntry
             label="新建页面"
             icon={<IconPlus size={18} stroke={1.7} />}
+            disabled={busy}
             onClick={() => void handleCreate(currentDocId ?? null)}
+          />
+          <MenuEntry
+            label="导入 Markdown"
+            icon={<IconFileImport size={18} stroke={1.7} />}
+            disabled={busy}
+            onClick={() => fileInputRef.current?.click()}
           />
         </div>
       </div>
@@ -241,6 +302,17 @@ export default function WorkspaceSidebar() {
                 onClick={() => void handleCreate()}
               >
                 <IconPlus size={13} stroke={1.7} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="导入 Markdown" withArrow>
+              <ActionIcon
+                variant="default"
+                size={18}
+                aria-label="导入 Markdown"
+                disabled={busy}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <IconFileImport size={13} stroke={1.7} />
               </ActionIcon>
             </Tooltip>
           </div>

@@ -2,6 +2,7 @@ package com.zcollab.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -9,15 +10,19 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.MybatisMapperBuilderAssistant;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.zcollab.dto.doc.ImportDocRequest;
 import com.zcollab.dto.doc.SearchDocRequest;
 import com.zcollab.entity.Doc;
 import com.zcollab.exception.BusinessException;
 import com.zcollab.exception.ErrorCode;
 import com.zcollab.mapper.DocMapper;
 import com.zcollab.service.WorkspaceMemberService;
+import com.zcollab.vo.doc.DocResponse;
 import com.zcollab.vo.doc.DocSearchResponse;
 import com.zcollab.vo.doc.DocSearchRow;
 import com.zcollab.vo.workspace.WorkspaceMembership;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Proxy;
@@ -225,6 +230,114 @@ class DocServiceImplTest {
         assertEquals(1, harness.updateCount);
         assertTrue(harness.updateWrapper.getSqlSet().contains("parent_doc_id"));
         assertTrue(harness.updateWrapper.getParamNameValuePairs().values().contains(null));
+    }
+
+    @Test
+    void importDocWritesContentAndTextWithoutClaimingSeed() {
+        ImportHarness harness = new ImportHarness();
+        ImportDocRequest request = new ImportDocRequest();
+        request.setTitle("中文标题");
+        request.setContent("{\"type\":\"doc\"}");
+        request.setContentText("正文内容");
+        harness.content = request.getContent();
+        harness.contentText = request.getContentText();
+
+        DocResponse response = harness.service().importDoc(request);
+
+        assertEquals(100L, response.id());
+        assertEquals("中文标题", response.title());
+        assertNull(response.parentDocId());
+        assertEquals(request.getContent(), response.content());
+        assertEquals("正文内容", response.contentText());
+        assertEquals(1, harness.insertCount);
+        assertEquals(1, harness.updateCount);
+        assertNull(harness.sortParentId);
+        assertEquals(9, harness.stored.getSortOrder());
+        assertTrue(harness.updateWrapper.getSqlSet().contains("content"));
+        assertTrue(harness.updateWrapper.getSqlSet().contains("content_text"));
+        assertFalse(harness.updateWrapper.getSqlSet().contains("seed_claimed_at"));
+        assertFalse(harness.storedContentBeforeUpdate.contains("seed"));
+    }
+
+    @Test
+    void importDocRejectsContentLargerThanTwoMegabytes() {
+        ImportHarness harness = new ImportHarness();
+        ImportDocRequest request = new ImportDocRequest();
+        request.setTitle("超大文件");
+        request.setContent("x".repeat(2 * 1024 * 1024 + 1));
+
+        BusinessException error = assertThrows(BusinessException.class, () -> harness.service().importDoc(request));
+
+        assertEquals(ErrorCode.BAD_REQUEST, error.getErrorCode());
+        assertEquals("content 超过 2MB", error.getMessage());
+        assertEquals(0, harness.insertCount);
+        assertEquals(0, harness.updateCount);
+    }
+
+    @Test
+    void importRequestValidatesTitleLength() {
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+        ImportDocRequest request = new ImportDocRequest();
+        request.setContent("{}");
+
+        request.setTitle("a".repeat(201));
+        assertFalse(validator.validate(request).isEmpty());
+
+        request.setTitle(" ");
+        assertFalse(validator.validate(request).isEmpty());
+
+        request.setTitle("中文标题");
+        assertTrue(validator.validate(request).isEmpty());
+    }
+
+    private static class ImportHarness {
+        final Doc stored = new Doc();
+        LambdaUpdateWrapper<Doc> updateWrapper;
+        Long sortParentId;
+        String storedContentBeforeUpdate = "";
+        String content;
+        String contentText;
+        int insertCount;
+        int updateCount;
+
+        @SuppressWarnings("unchecked")
+        DocServiceImpl service() {
+            DocMapper mapper = (DocMapper) Proxy.newProxyInstance(
+                    getClass().getClassLoader(), new Class<?>[]{DocMapper.class},
+                    (proxy, method, args) -> switch (method.getName()) {
+                        case "selectNextSortOrder" -> {
+                            sortParentId = (Long) args[1];
+                            yield 9;
+                        }
+                        case "insert" -> {
+                            insertCount += 1;
+                            Doc inserted = (Doc) args[0];
+                            storedContentBeforeUpdate = inserted.getContent();
+                            stored.setId(100L);
+                            stored.setWorkspaceId(inserted.getWorkspaceId());
+                            stored.setParentDocId(inserted.getParentDocId());
+                            stored.setSortOrder(inserted.getSortOrder());
+                            stored.setTitle(inserted.getTitle());
+                            stored.setContent("");
+                            stored.setContentText("");
+                            inserted.setId(100L);
+                            yield 1;
+                        }
+                        case "update" -> {
+                            updateCount += 1;
+                            updateWrapper = (LambdaUpdateWrapper<Doc>) args[1];
+                            stored.setContent(content);
+                            stored.setContentText(contentText);
+                            yield 1;
+                        }
+                        case "selectById" -> stored;
+                        default -> throw new UnsupportedOperationException(method.getName());
+                    });
+            WorkspaceMemberService members = (WorkspaceMemberService) Proxy.newProxyInstance(
+                    getClass().getClassLoader(), new Class<?>[]{WorkspaceMemberService.class},
+                    (proxy, method, args) -> new WorkspaceMembership(1L, "owner"));
+            return new DocServiceImpl(mapper, null, members, null, null);
+        }
     }
 
     private static class MoveHarness {

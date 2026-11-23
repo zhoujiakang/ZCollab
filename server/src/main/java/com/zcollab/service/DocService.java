@@ -1,6 +1,7 @@
 package com.zcollab.service;
 
 import com.zcollab.dto.doc.CreateDocRequest;
+import com.zcollab.dto.doc.ImportDocRequest;
 import com.zcollab.dto.doc.SearchDocRequest;
 import com.zcollab.dto.doc.UpdateDocRequest;
 import com.zcollab.vo.doc.DocResponse;
@@ -18,6 +19,8 @@ public interface DocService {
     List<DocSearchResponse> search(SearchDocRequest request);
 
     DocResponse create(CreateDocRequest request);
+
+    DocResponse importDoc(ImportDocRequest request);
 
     DocResponse get(Long id);
 

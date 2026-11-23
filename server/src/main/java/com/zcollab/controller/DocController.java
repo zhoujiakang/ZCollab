@@ -5,6 +5,7 @@ import com.zcollab.dto.doc.CompactDocRequest;
 import com.zcollab.dto.doc.CreateDocRequest;
 import com.zcollab.dto.doc.DeleteDocRequest;
 import com.zcollab.dto.doc.GetDocRequest;
+import com.zcollab.dto.doc.ImportDocRequest;
 import com.zcollab.dto.doc.MoveDocRequest;
 import com.zcollab.dto.doc.SearchDocRequest;
 import com.zcollab.dto.doc.UpdateDocRequest;
@@ -45,6 +46,11 @@ public class DocController {
     @PostMapping("/create")
     public ApiResponse<DocResponse> create(@RequestBody @Valid CreateDocRequest request) {
         return ApiResponse.ok(docService.create(request));
+    }
+
+    @PostMapping("/import")
+    public ApiResponse<DocResponse> importDoc(@RequestBody @Valid ImportDocRequest request) {
+        return ApiResponse.ok(docService.importDoc(request));
     }
 
     @PostMapping("/get")

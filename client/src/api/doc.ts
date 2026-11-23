@@ -22,6 +22,13 @@ export interface DocSearchResult {
   score: number;
 }
 
+export interface ImportDocInput {
+  title: string;
+  parentId: string | null;
+  content: string;
+  contentText: string;
+}
+
 export interface FavoriteDoc {
   id: string;
   title: string;
@@ -43,6 +50,10 @@ export function searchDocs(keyword: string): Promise<DocSearchResult[]> {
 
 export function createDoc(parentDocId?: string | null): Promise<Doc> {
   return apiPost<Doc>('/doc/create', { parentDocId: parentDocId ?? null });
+}
+
+export function importDoc(input: ImportDocInput): Promise<Doc> {
+  return apiPost<Doc>('/doc/import', input, { timeout: 60000 });
 }
 
 export function getDoc(id: string): Promise<Doc> {

@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.zcollab.core.store.DocStore;
 import com.zcollab.dto.doc.CreateDocRequest;
+import com.zcollab.dto.doc.ImportDocRequest;
 import com.zcollab.dto.doc.SearchDocRequest;
 import com.zcollab.dto.doc.UpdateDocRequest;
 import com.zcollab.entity.Doc;
@@ -24,6 +25,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -35,6 +37,7 @@ public class DocServiceImpl implements DocService {
 
     private static final int DEFAULT_SEARCH_LIMIT = 20;
     private static final int MAX_SEARCH_LIMIT = 50;
+    private static final int MAX_IMPORT_CONTENT_BYTES = 2 * 1024 * 1024;
     private static final String SNIPPET_MARK = "\u0001";
     private static final String TOKEN_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     private static final int TOKEN_LENGTH = 22;
@@ -89,16 +92,40 @@ public class DocServiceImpl implements DocService {
         Long workspaceId = currentWorkspaceId();
         String title = request.getTitle() == null || request.getTitle().isBlank()
                 ? "无标题" : request.getTitle();
+        return toResponse(insertDoc(workspaceId, request.getParentDocId(), title));
+    }
 
+    @Override
+    @Transactional
+    public DocResponse importDoc(ImportDocRequest request) {
+        String content = request.getContent();
+        if (content.getBytes(StandardCharsets.UTF_8).length > MAX_IMPORT_CONTENT_BYTES) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "content 超过 2MB");
+        }
+        String contentText = request.getContentText() == null ? "" : request.getContentText();
+
+        Long workspaceId = currentWorkspaceId();
+        Doc doc = insertDoc(workspaceId, request.getParentId(), request.getTitle());
+        docMapper.update(null, new LambdaUpdateWrapper<Doc>()
+                .eq(Doc::getId, doc.getId())
+                .eq(Doc::getWorkspaceId, workspaceId)
+                .isNull(Doc::getDeletedAt)
+                .set(Doc::getContent, content)
+                .set(Doc::getContentText, contentText));
+        // 让 claim-seed 迁移在首次打开时把 content 灌入 Yjs；这里不写 seed_claimed_at。
+        return toResponse(requireDoc(doc.getId(), workspaceId));
+    }
+
+    private Doc insertDoc(Long workspaceId, Long parentDocId, String title) {
         Doc doc = new Doc();
         doc.setWorkspaceId(workspaceId);
-        doc.setParentDocId(request.getParentDocId());
-        doc.setSortOrder(docMapper.selectNextSortOrder(workspaceId, request.getParentDocId()));
+        doc.setParentDocId(parentDocId);
+        doc.setSortOrder(docMapper.selectNextSortOrder(workspaceId, parentDocId));
         doc.setTitle(title);
         doc.setContent("");
         doc.setContentText("");
         docMapper.insert(doc);
-        return toResponse(doc);
+        return doc;
     }
 
     @Override
