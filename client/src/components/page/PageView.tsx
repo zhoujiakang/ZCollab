@@ -40,6 +40,7 @@ import { getDocPath } from '../../lib/docTree';
 import { useAside, type AsideHeading } from '../layout/AsideContext';
 import ShareDialog from '../ShareDialog';
 import { Attachment } from './Attachment';
+import { BlockHandle } from './BlockHandle';
 import { SlashCommand } from './SlashCommand';
 import type { SlashUploadKind } from './SlashMenu';
 import editorClasses from './Editor.module.css';
@@ -253,6 +254,7 @@ function CollabEditor({
       StarterKit.configure({ undoRedo: false, link: { openOnClick: false } }),
       Image.configure({ inline: false, allowBase64: false }),
       Attachment,
+      BlockHandle,
       slashCommand,
       Collaboration.configure({ document: ydoc, field: 'content' }),
       CollaborationCursor.configure({

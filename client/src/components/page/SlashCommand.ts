@@ -20,6 +20,7 @@ export const slashCommandPluginKey = new PluginKey('slashCommand');
 const MENU_WIDTH = 280;
 const MENU_MAX_HEIGHT = 320;
 const MENU_GAP = 6;
+const SLASH_MENU_EVENT = 'zcollab:slash-menu';
 
 export type SlashCommandOptions = {
   onRequestUpload?: (kind: SlashUploadKind, position: number) => void;
@@ -117,6 +118,8 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
               width: `${MENU_WIDTH}px`,
             });
             document.body.appendChild(renderer.element);
+            renderer.element.dataset.zcollabSlashMenu = '';
+            window.dispatchEvent(new CustomEvent(SLASH_MENU_EVENT, { detail: { open: true } }));
             if (typeof ResizeObserver !== 'undefined') {
               resizeObserver = new ResizeObserver(refreshPosition);
               resizeObserver.observe(renderer.element);
@@ -145,6 +148,7 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
             if (current?.element.parentNode) {
               current.element.parentNode.removeChild(current.element);
             }
+            window.dispatchEvent(new CustomEvent(SLASH_MENU_EVENT, { detail: { open: false } }));
           },
         }),
       }),
