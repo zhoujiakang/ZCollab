@@ -1,9 +1,14 @@
 package com.zcollab.config;
 
 import cn.dev33.satoken.interceptor.SaInterceptor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.CacheControl;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.nio.file.Paths;
 
 /**
  * 只注册 Sa-Token 的注解鉴权拦截器，不启用 @EnableWebMvc，保留 Boot 默认 MVC 配置。
@@ -14,10 +19,28 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
+    @Value("${zcollab.upload-dir:./uploads}")
+    private String uploadDir;
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         // 无参构造：isAnnotation 默认为 true、auth 为空实现，仅执行注解鉴权。
         // @SaCheckLogin 靠该拦截器的 preHandle 触发，只打注解不注册拦截器不会拦住任何请求。
         registry.addInterceptor(new SaInterceptor()).addPathPatterns("/api/**");
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String location = Paths.get(uploadDir).toAbsolutePath().normalize().toUri().toString();
+        CacheControl immutable = new CacheControl() {
+            @Override
+            public String getHeaderValue() {
+                return "public, max-age=31536000, immutable";
+            }
+        };
+        // 文件名是随机串，可长缓存；ResourceHttpRequestHandler 默认不生成目录列表。
+        registry.addResourceHandler("/files/**")
+                .addResourceLocations(location)
+                .setCacheControl(immutable);
     }
 }

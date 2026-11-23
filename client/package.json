@@ -17,6 +17,7 @@
     "@tabler/icons-react": "^3.52.0",
     "@tiptap/extension-collaboration": "^3.34.0",
     "@tiptap/extension-collaboration-caret": "^3.34.0",
+    "@tiptap/extension-image": "^3.34.0",
     "@tiptap/react": "^3.34.0",
     "@tiptap/starter-kit": "^3.34.0",
     "axios": "^1.21.1",

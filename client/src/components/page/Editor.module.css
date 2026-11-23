@@ -98,6 +98,18 @@
   margin: 1.5em 0;
 }
 
+.editor :global(.zcollab-editor img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.editor :global(.zcollab-editor img.ProseMirror-selectednode) {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
+
 .readonly :global(.zcollab-editor[contenteditable='false']) {
   cursor: default;
   caret-color: transparent;

@@ -51,6 +51,15 @@ export async function apiPost<T>(url: string, body?: unknown, config?: AxiosRequ
   }
 }
 
+export async function apiUpload<T>(url: string, form: FormData): Promise<T> {
+  try {
+    const { data } = await http.post<ApiResponse<T>>(url, form, { timeout: 60000 });
+    return unwrap(data);
+  } catch (error) {
+    return rethrow(error);
+  }
+}
+
 export async function apiPostVoid(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<void> {
   try {
     const { data } = await http.post<ApiResponse<unknown>>(url, body ?? {}, config);
