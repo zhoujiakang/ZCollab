@@ -98,3 +98,23 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.tabLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tabCount {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border-radius: 9px;
+  background-color: var(--mantine-primary-color-filled);
+  color: var(--mantine-color-white);
+  font-size: 11px;
+  line-height: 1;
+}

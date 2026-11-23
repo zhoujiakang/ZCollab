@@ -1,0 +1,44 @@
+package com.zcollab.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.OffsetDateTime;
+
+@Getter
+@Setter
+@TableName("doc_comment")
+public class DocComment {
+
+    @TableId(type = IdType.ASSIGN_ID)
+    private Long id;
+
+    private Long workspaceId;
+
+    private Long docId;
+
+    private Long userId;
+
+    private Long parentId;
+
+    private String quote;
+
+    private Integer anchorFrom;
+
+    private Integer anchorTo;
+
+    private String body;
+
+    private OffsetDateTime resolvedAt;
+
+    private Long resolvedBy;
+
+    private OffsetDateTime deletedAt;
+
+    private OffsetDateTime createdAt;
+
+    private OffsetDateTime updatedAt;
+}

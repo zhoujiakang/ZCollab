@@ -1,0 +1,122 @@
+.panel {
+  padding: 8px 12px 20px;
+}
+
+.composer {
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid var(--zc-border);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.quote {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border-left: 2px solid var(--mantine-color-gray-5);
+  background-color: var(--mantine-color-gray-1);
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.5;
+}
+
+[data-mantine-color-scheme='dark'] .quote {
+  background-color: var(--mantine-color-dark-6);
+  border-left-color: var(--mantine-color-dark-4);
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item {
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--zc-border);
+}
+
+.reply {
+  margin: 8px 0 0 24px;
+  padding-left: 10px;
+  border-bottom: 0;
+  border-left: 1px solid var(--zc-border);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--mantine-color-dimmed);
+  font-size: 11px;
+}
+
+.body {
+  margin-top: 6px;
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.action {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mantine-color-dimmed);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.action:hover {
+  color: var(--mantine-primary-color-filled);
+}
+
+.replyComposer {
+  margin-top: 8px;
+}
+
+.resolvedGroup {
+  padding-top: 4px;
+}
+
+.groupToggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--mantine-color-dimmed);
+  font-family: inherit;
+  font-size: var(--mantine-font-size-xs);
+  cursor: pointer;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}

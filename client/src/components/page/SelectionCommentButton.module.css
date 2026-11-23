@@ -1,0 +1,6 @@
+.layer {
+  position: fixed;
+  z-index: 1001;
+  box-shadow: var(--mantine-shadow-sm);
+  border-radius: var(--mantine-radius-sm);
+}

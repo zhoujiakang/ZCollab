@@ -1,25 +1,20 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { ActionIcon, CopyButton, ScrollArea, Tabs, Text, Tooltip } from '@mantine/core';
 import { IconCheck, IconCopy } from '@tabler/icons-react';
+import type { DocComment } from '../../api/comment';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { getDocPath } from '../../lib/docTree';
+import { formatRelativeTime } from '../../lib/relativeTime';
 import { useAside } from '../layout/AsideContext';
+import { useCommentDraft } from '../layout/CommentDraftContext';
+import CommentPanel from './CommentPanel';
+import { useComments } from './useComments';
 import classes from './PageAside.module.css';
 
-function formatRelativeTime(value: string | null) {
-  if (!value) return '—';
-  const timestamp = Date.parse(value);
-  if (Number.isNaN(timestamp)) return '—';
-  const diff = Math.max(0, Date.now() - timestamp);
-  if (diff < 60_000) return '刚刚';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date(timestamp));
+function countUnresolved(comment: DocComment): number {
+  return (comment.resolvedAt ? 0 : 1)
+    + comment.replies.reduce((sum, reply) => sum + countUnresolved(reply), 0);
 }
 
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
@@ -35,19 +30,38 @@ export default function PageAside() {
   const { data } = useAside();
   const { docs } = useWorkspace();
   const { docId } = useParams();
+  const { draft, setDraft } = useCommentDraft();
+  const { comments, create, resolve, remove } = useComments(docId);
+  const [tab, setTab] = useState('toc');
   const path = getDocPath(docs, docId);
   const location = path.length
     ? path.map((item) => item.title || '无标题').join(' / ')
     : data?.title || '无标题';
+  const unresolvedCount = comments.reduce((sum, comment) => sum + countUnresolved(comment), 0);
+
+  useEffect(() => {
+    if (draft) setTab('comments');
+  }, [draft]);
+
+  useEffect(() => {
+    setDraft(null);
+  }, [docId, setDraft]);
 
   return (
     <Tabs
-      defaultValue="toc"
+      value={tab}
+      onChange={(value) => setTab(value ?? 'toc')}
       classNames={{ root: classes.root, list: classes.list, panel: classes.panel }}
     >
       <Tabs.List>
         <Tabs.Tab value="toc">目录</Tabs.Tab>
         <Tabs.Tab value="detail">详情</Tabs.Tab>
+        <Tabs.Tab value="comments">
+          <span className={classes.tabLabel}>
+            评论
+            {unresolvedCount > 0 && <span className={classes.tabCount}>{unresolvedCount}</span>}
+          </span>
+        </Tabs.Tab>
       </Tabs.List>
 
       <Tabs.Panel value="toc">
@@ -102,6 +116,20 @@ export default function PageAside() {
               </div>
             </DetailRow>
           </div>
+        </ScrollArea>
+      </Tabs.Panel>
+
+      <Tabs.Panel value="comments">
+        <ScrollArea h="100%" type="auto" className={classes.scroll}>
+          <CommentPanel
+            docId={docId ?? ''}
+            comments={comments}
+            draft={draft}
+            setDraft={setDraft}
+            create={create}
+            resolve={resolve}
+            remove={remove}
+          />
         </ScrollArea>
       </Tabs.Panel>
     </Tabs>

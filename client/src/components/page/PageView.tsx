@@ -45,6 +45,7 @@ import { createContentExtensions } from './contentExtensions';
 import { BlockHandle } from './BlockHandle';
 import { SlashCommand } from './SlashCommand';
 import FloatingBlockTools from './FloatingBlockTools';
+import SelectionCommentButton from './SelectionCommentButton';
 import type { SlashUploadKind } from './SlashMenu';
 import editorClasses from './Editor.module.css';
 import classes from './PageView.module.css';
@@ -545,6 +546,7 @@ function CollabEditor({
       {waitingForSeed && <Text className={classes.loadingNote}>正在同步内容</Text>}
       <EditorContent editor={editor} />
       <FloatingBlockTools editor={editor} />
+      <SelectionCommentButton editor={editor} />
       <input
         ref={imageInputRef}
         type="file"

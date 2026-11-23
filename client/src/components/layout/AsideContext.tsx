@@ -25,6 +25,7 @@ interface AsideContextValue {
   data: AsideData | null;
   publish: (data: AsideData | null) => void;
   toggle: () => void;
+  open: () => void;
 }
 
 const AsideContext = createContext<AsideContextValue | null>(null);
@@ -35,10 +36,11 @@ export function AsideProvider({ children }: { children: ReactNode }) {
 
   const publish = useCallback((next: AsideData | null) => setData(next), []);
   const toggle = useCallback(() => setOpened((value) => !value), []);
+  const open = useCallback(() => setOpened(true), []);
 
   const value = useMemo<AsideContextValue>(
-    () => ({ opened, data, publish, toggle }),
-    [opened, data, publish, toggle],
+    () => ({ opened, data, publish, toggle, open }),
+    [opened, data, publish, toggle, open],
   );
 
   return <AsideContext.Provider value={value}>{children}</AsideContext.Provider>;
