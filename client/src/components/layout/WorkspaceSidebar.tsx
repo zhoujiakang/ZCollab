@@ -371,17 +371,23 @@ export default function WorkspaceSidebar() {
           </div>
         </div>
         <div className={classes.pages}>
-          <PageTree
-            docs={docs}
-            currentDocId={currentDocId}
-            loading={loadingDocs}
-            collapseAllSignal={collapseAllSignal}
-            onSelect={(docId) => {
-              if (docId === currentDocId) return;
-              void flushPendingSave().then(() => navigate(`/w/${workspaceId}/p/${docId}`));
-            }}
-            onDelete={(id, title) => void handleDelete(id, title)}
-          />
+          {!loadingDocs && docs.length === 0 ? (
+            <Text size="xs" c="dimmed" ta="center" py="md">
+              还没有页面 · 按侧栏「新建页面」开始
+            </Text>
+          ) : (
+            <PageTree
+              docs={docs}
+              currentDocId={currentDocId}
+              loading={loadingDocs}
+              collapseAllSignal={collapseAllSignal}
+              onSelect={(docId) => {
+                if (docId === currentDocId) return;
+                void flushPendingSave().then(() => navigate(`/w/${workspaceId}/p/${docId}`));
+              }}
+              onDelete={(id, title) => void handleDelete(id, title)}
+            />
+          )}
         </div>
       </div>
     </div>

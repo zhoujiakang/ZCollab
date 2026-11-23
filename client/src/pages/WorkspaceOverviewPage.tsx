@@ -2,6 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Group, Text, Title } from '@mantine/core';
 import { IconFileText, IconPlus } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import EmptyState from '../components/common/EmptyState';
 import { useAuth } from '../context/AuthContext';
 import { useWorkspace } from '../context/WorkspaceContext';
 import classes from './pages.module.css';
@@ -56,7 +57,16 @@ export default function WorkspaceOverviewPage() {
             ))}
           </div>
         ) : (
-          <Text className={classes.muted}>还没有文档，点击右上角新建一页。</Text>
+          <EmptyState
+            icon={<IconFileText size={36} stroke={1.7} />}
+            title="还没有页面"
+            description="新建一页，或者从侧栏「新建页面」里挑一个模板开始。"
+            action={(
+              <Button leftSection={<IconPlus size={16} stroke={1.7} />} onClick={() => void handleCreate()}>
+                新建页面
+              </Button>
+            )}
+          />
         )}
       </div>
     </div>

@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Center, Loader, Modal, ScrollArea, Text, TextInput } from '@mantine/core';
+import { Center, Group, Kbd, Loader, Modal, ScrollArea, Stack, Text, TextInput } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
   IconFileText,
@@ -21,6 +21,7 @@ import {
 import { searchDocs, type DocSearchResult, type DocSummary } from '../../api/doc';
 import type { WorkspaceContextValue } from '../../context/WorkspaceContext';
 import { DOC_TEMPLATES, type DocTemplate } from '../../lib/docTemplates';
+import { SHORTCUTS } from '../../lib/shortcuts';
 import classes from './CommandPalette.module.css';
 
 interface CommandPaletteProps {
@@ -362,11 +363,22 @@ export default function CommandPalette({
                 {searchItems.map((item, index) => renderItem(item, filteredOperations.length + index))}
               </>
             ) : filteredOperations.length === 0 ? (
-              <Text className={classes.empty} size="sm">没有匹配的文档</Text>
+              <Stack gap={4} align="center" className={classes.empty}>
+                <Text size="sm">没有匹配的结果</Text>
+                <Text size="xs" c="dimmed">只搜索标题和正文，也可以直接输入命令</Text>
+              </Stack>
             ) : null}
           </>
         )}
       </ScrollArea.Autosize>
+
+      <div className={classes.footer}>
+        <Text size="xs" c="dimmed">? 查看全部快捷键</Text>
+        <Group gap="xs">
+          <Kbd>{SHORTCUTS.palette}</Kbd>
+          <Kbd>{SHORTCUTS.save}</Kbd>
+        </Group>
+      </div>
     </Modal>
   );
 }

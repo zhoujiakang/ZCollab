@@ -4,12 +4,14 @@ import { useAuth } from '../../context/AuthContext';
 import { CommandPaletteContext } from '../../context/CommandPaletteContext';
 import { useWorkspaceBridge } from '../../context/WorkspaceContext';
 import CommandPalette from './CommandPalette';
+import ShortcutCheatsheet from './ShortcutCheatsheet';
 
 export default function CommandPaletteHost({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { user } = useAuth();
   const { workspace } = useWorkspaceBridge();
   const [opened, setOpened] = useState(false);
+  const [cheatsheetOpened, setCheatsheetOpened] = useState(false);
 
   const open = useCallback(() => setOpened(true), []);
   const close = useCallback(() => setOpened(false), []);
@@ -19,6 +21,15 @@ export default function CommandPaletteHost({ children }: { children: ReactNode }
       if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
         event.preventDefault();
         open();
+      }
+      if (event.key === '?') {
+        const target = event.target;
+        if (target instanceof HTMLElement) {
+          const tagName = target.tagName;
+          if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT' || target.isContentEditable) return;
+        }
+        event.preventDefault();
+        setCheatsheetOpened(true);
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -37,6 +48,10 @@ export default function CommandPaletteHost({ children }: { children: ReactNode }
         docs={workspace?.docs}
         currentDocId={currentDocId}
         workspace={workspace}
+      />
+      <ShortcutCheatsheet
+        opened={cheatsheetOpened}
+        onClose={() => setCheatsheetOpened(false)}
       />
     </CommandPaletteContext.Provider>
   );
