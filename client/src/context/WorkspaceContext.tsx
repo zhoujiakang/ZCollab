@@ -14,6 +14,7 @@ import { notifications } from '@mantine/notifications';
 import {
   createDoc,
   deleteDoc,
+  importDoc,
   listDocs,
   listFavorites,
   listRecentDocs,
@@ -24,6 +25,8 @@ import {
   type RecentDoc,
 } from '../api/doc';
 import { collectRemoved } from '../lib/docTree';
+import { markdownToDoc } from '../lib/markdownImport';
+import type { DocTemplate } from '../lib/docTemplates';
 
 export interface WorkspaceContextValue {
   workspaceId: string;
@@ -40,6 +43,7 @@ export interface WorkspaceContextValue {
   registerFlush: (flush: (() => Promise<void>) | null) => void;
   flushPendingSave: () => Promise<void>;
   create: (parentDocId?: string | null) => Promise<Doc>;
+  createFromTemplate: (template: DocTemplate, parentDocId?: string | null) => Promise<Doc>;
   remove: (id: string) => Promise<void>;
 }
 
@@ -155,6 +159,23 @@ export function WorkspaceProvider({ workspaceId, children }: { workspaceId: stri
     [flushPendingSave],
   );
 
+  const createFromTemplate = useCallback(
+    async (template: DocTemplate, parentDocId?: string | null) => {
+      await flushPendingSave();
+      if (!template.markdown.trim()) return create(parentDocId);
+      const { json, text } = markdownToDoc(template.markdown);
+      const doc = await importDoc({
+        title: template.defaultTitle(new Date()),
+        parentId: parentDocId ?? null,
+        content: JSON.stringify(json),
+        contentText: text,
+      });
+      setDocs((prev) => [...prev, { id: doc.id, parentDocId: doc.parentDocId, title: doc.title }]);
+      return doc;
+    },
+    [create, flushPendingSave],
+  );
+
   const remove = useCallback(
     async (id: string) => {
       await flushPendingSave();
@@ -188,12 +209,12 @@ export function WorkspaceProvider({ workspaceId, children }: { workspaceId: stri
     () => ({
       workspaceId, docs, loadingDocs, favorites, recent, favoriteIds,
       setDocs, reloadDocs, refreshFavorites, refreshRecent, toggleFavorite,
-      registerFlush, flushPendingSave, create, remove,
+      registerFlush, flushPendingSave, create, createFromTemplate, remove,
     }),
     [
       workspaceId, docs, loadingDocs, favorites, recent, favoriteIds,
       reloadDocs, refreshFavorites, refreshRecent, toggleFavorite,
-      registerFlush, flushPendingSave, create, remove,
+      registerFlush, flushPendingSave, create, createFromTemplate, remove,
     ],
   );
 

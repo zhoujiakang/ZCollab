@@ -20,6 +20,7 @@ import {
 } from '@tabler/icons-react';
 import { searchDocs, type DocSearchResult, type DocSummary } from '../../api/doc';
 import type { WorkspaceContextValue } from '../../context/WorkspaceContext';
+import { DOC_TEMPLATES, type DocTemplate } from '../../lib/docTemplates';
 import classes from './CommandPalette.module.css';
 
 interface CommandPaletteProps {
@@ -158,6 +159,17 @@ export default function CommandPalette({
     }
   }, [navigate, onClose, workspace, workspaceId]);
 
+  const createFromTemplate = useCallback(async (template: DocTemplate) => {
+    if (!workspaceId || !workspace) return;
+    try {
+      const doc = await workspace.createFromTemplate(template, null);
+      onClose();
+      navigate(`/w/${workspaceId}/p/${doc.id}`);
+    } catch (error) {
+      notifyError(error);
+    }
+  }, [navigate, onClose, workspace, workspaceId]);
+
   const copyCurrentLink = useCallback(async () => {
     if (!currentDocId || !workspaceId) return;
     const link = `${window.location.origin}/w/${workspaceId}/p/${currentDocId}`;
@@ -209,8 +221,17 @@ export default function CommandPalette({
         run: () => copyCurrentLink(),
       },
     );
+    for (const template of DOC_TEMPLATES) {
+      items.push({
+        id: `new-from-template-${template.id}`,
+        label: `从模板新建：${template.name}`,
+        description: template.description,
+        icon: <IconFileText size={16} stroke={1.7} />,
+        run: () => createFromTemplate(template),
+      });
+    }
     return items;
-  }, [copyCurrentLink, createPage, currentDocId, navigate, onClose, workspaceId]);
+  }, [copyCurrentLink, createFromTemplate, createPage, currentDocId, navigate, onClose, workspaceId]);
 
   const recentItems = useMemo<PaletteItem[]>(() => recent.map((doc) => ({
     id: `recent-${doc.id}`,
@@ -229,7 +250,16 @@ export default function CommandPalette({
     run: () => openDoc(result.id),
   })), [openDoc, visibleResults]);
 
-  const items = query ? searchItems : [...operations, ...recentItems];
+  const filteredOperations = useMemo<PaletteItem[]>(() => {
+    if (!query) return [];
+    const needle = query.toLowerCase();
+    return operations.filter((item) => (
+      item.label.toLowerCase().includes(needle)
+      || (typeof item.description === 'string' && item.description.toLowerCase().includes(needle))
+    ));
+  }, [operations, query]);
+
+  const items = query ? [...filteredOperations, ...searchItems] : [...operations, ...recentItems];
 
   useEffect(() => {
     setHighlighted(0);
@@ -316,15 +346,25 @@ export default function CommandPalette({
               </>
             )}
           </>
-        ) : searching || input.trim() !== term ? (
-          <Center py="xl"><Loader size="sm" /></Center>
-        ) : searchItems.length ? (
-          <>
-            <div className={classes.groupLabel}>搜索结果</div>
-            {searchItems.map(renderItem)}
-          </>
         ) : (
-          <Text className={classes.empty} size="sm">没有匹配的文档</Text>
+          <>
+            {filteredOperations.length > 0 && (
+              <>
+                <div className={classes.groupLabel}>操作</div>
+                {filteredOperations.map(renderItem)}
+              </>
+            )}
+            {searching || input.trim() !== term ? (
+              <Center py="xl"><Loader size="sm" /></Center>
+            ) : searchItems.length ? (
+              <>
+                <div className={classes.groupLabel}>搜索结果</div>
+                {searchItems.map((item, index) => renderItem(item, filteredOperations.length + index))}
+              </>
+            ) : filteredOperations.length === 0 ? (
+              <Text className={classes.empty} size="sm">没有匹配的文档</Text>
+            ) : null}
+          </>
         )}
       </ScrollArea.Autosize>
     </Modal>

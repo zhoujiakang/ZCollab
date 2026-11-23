@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode, type Ref } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ActionIcon, Menu, Text, Tooltip, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -18,6 +18,7 @@ import { useOpenCommandPalette } from '../../context/CommandPaletteContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { importDoc } from '../../api/doc';
 import { markdownToDoc } from '../../lib/markdownImport';
+import { DOC_TEMPLATES, type DocTemplate } from '../../lib/docTemplates';
 import PageTree from '../page/PageTree';
 import classes from './Sidebar.module.css';
 
@@ -26,12 +27,14 @@ interface MenuEntryProps {
   icon: ReactNode;
   active?: boolean;
   disabled?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
+  ref?: Ref<HTMLButtonElement>;
 }
 
-function MenuEntry({ label, icon, active, disabled, onClick }: MenuEntryProps) {
+function MenuEntry({ label, icon, active, disabled, onClick, ref }: MenuEntryProps) {
   return (
     <UnstyledButton
+      ref={ref}
       className={`${classes.menu} ${active ? classes.menuActive : ''}`}
       disabled={disabled}
       onClick={onClick}
@@ -105,11 +108,12 @@ export default function WorkspaceSidebar() {
   const location = useLocation();
   const { user } = useAuth();
   const {
-    workspaceId, docs, loadingDocs, favorites, recent, create, remove, reloadDocs,
-    flushPendingSave, toggleFavorite,
+    workspaceId, docs, loadingDocs, favorites, recent, create, createFromTemplate,
+    remove, reloadDocs, flushPendingSave, toggleFavorite,
   } = useWorkspace();
   const [collapseAllSignal, setCollapseAllSignal] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [createMenuOpened, setCreateMenuOpened] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentDocId = /^\/w\/[^/]+\/p\/([^/]+)/.exec(location.pathname)?.[1];
@@ -121,6 +125,23 @@ export default function WorkspaceSidebar() {
     setBusy(true);
     try {
       const doc = await create(parentDocId ?? null);
+      navigate(`/w/${workspaceId}/p/${doc.id}`);
+    } catch (error) {
+      notifications.show({
+        color: 'red',
+        title: '操作失败',
+        message: error instanceof Error ? error.message : '未知错误',
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCreateFromTemplate = async (template: DocTemplate) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const doc = await createFromTemplate(template, currentDocId ?? null);
       navigate(`/w/${workspaceId}/p/${doc.id}`);
     } catch (error) {
       notifications.show({
@@ -243,12 +264,44 @@ export default function WorkspaceSidebar() {
             icon={<IconSearch size={18} stroke={1.7} />}
             onClick={openCommandPalette}
           />
-          <MenuEntry
-            label="新建页面"
-            icon={<IconPlus size={18} stroke={1.7} />}
-            disabled={busy}
-            onClick={() => void handleCreate(currentDocId ?? null)}
-          />
+          <Menu
+            opened={createMenuOpened}
+            onChange={setCreateMenuOpened}
+            position="bottom-start"
+            width={280}
+            shadow="md"
+          >
+            <Menu.Target>
+              <MenuEntry
+                label="新建页面"
+                icon={<IconPlus size={18} stroke={1.7} />}
+                disabled={busy}
+              />
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                onClick={() => {
+                  setCreateMenuOpened(false);
+                  void handleCreate(currentDocId ?? null);
+                }}
+              >
+                空白页面
+              </Menu.Item>
+              <Menu.Divider />
+              {DOC_TEMPLATES.map((template) => (
+                <Menu.Item
+                  key={template.id}
+                  onClick={() => {
+                    setCreateMenuOpened(false);
+                    void handleCreateFromTemplate(template);
+                  }}
+                >
+                  <div>{template.name}</div>
+                  <Text className={classes.menuDescription}>{template.description}</Text>
+                </Menu.Item>
+              ))}
+            </Menu.Dropdown>
+          </Menu>
           <MenuEntry
             label="导入 Markdown"
             icon={<IconFileImport size={18} stroke={1.7} />}
