@@ -27,6 +27,7 @@ export default function GlobalSidebar() {
   const { user } = useAuth();
   const isHome = location.pathname === '/home';
   const activeWorkspace = user?.activeWorkspace;
+  const settingsWorkspaceId = activeWorkspace?.id ?? user?.workspaces.items[0]?.id;
 
   return (
     <div className={classes.navbar}>
@@ -56,11 +57,13 @@ export default function GlobalSidebar() {
             icon={<IconUserPlus size={18} stroke={1.7} />}
             onClick={() => navigate('/home#members')}
           />
-          <MenuEntry
-            label="设置"
-            icon={<IconSettings size={18} stroke={1.7} />}
-            onClick={() => navigate(activeWorkspace ? `/w/${activeWorkspace.id}/settings` : '/home#settings')}
-          />
+          {settingsWorkspaceId && (
+            <MenuEntry
+              label="设置"
+              icon={<IconSettings size={18} stroke={1.7} />}
+              onClick={() => navigate(`/w/${settingsWorkspaceId}/settings`)}
+            />
+          )}
         </div>
       </div>
     </div>

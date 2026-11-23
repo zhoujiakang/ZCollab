@@ -37,6 +37,7 @@ export default function HomePage() {
   const [busy, setBusy] = useState(false);
 
   const activeWorkspace = user!.activeWorkspace;
+  const settingsWorkspaceId = activeWorkspace?.id ?? user?.workspaces.items[0]?.id;
 
   const refreshMembers = useCallback(async () => {
     setMembersLoading(true);
@@ -123,7 +124,8 @@ export default function HomePage() {
             <Button
               size="compact-sm"
               variant="light"
-              onClick={() => navigate(activeWorkspace ? `/w/${activeWorkspace.id}/settings` : '/home#spaces')}
+              disabled={!settingsWorkspaceId}
+              onClick={() => settingsWorkspaceId && navigate(`/w/${settingsWorkspaceId}/settings`)}
             >
               管理工作区
             </Button>

@@ -82,12 +82,14 @@ function WorkspaceRoute() {
       .then((me) => {
         if (!active) return;
         if (me.activeWorkspace?.id !== id) {
+          requestedRef.current = null;
           notifyError(new Error('无法进入该工作区'));
           navigate('/home', { replace: true });
         }
       })
       .catch((error) => {
         if (!active) return;
+        requestedRef.current = null;
         notifyError(error);
         navigate('/home', { replace: true });
       });
