@@ -17,6 +17,7 @@ export const SHORTCUTS = {
   slash: '/',
   openLink: `${MOD} + 点击`,
   close: 'Esc',
+  cheatsheet: '?',
 } as const;
 
 export interface ShortcutGroup {
@@ -31,6 +32,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { label: '打开命令面板 / 搜索', keys: SHORTCUTS.palette },
       { label: '保存当前文档', keys: SHORTCUTS.save },
       { label: '关闭面板或菜单', keys: SHORTCUTS.close },
+      { label: '打开这张速查表', keys: SHORTCUTS.cheatsheet },
     ],
   },
   {

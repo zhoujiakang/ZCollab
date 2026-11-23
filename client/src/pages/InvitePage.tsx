@@ -13,7 +13,6 @@ export default function InvitePage({ token }: { token: string }) {
   const [invite, setInvite] = useState<PublicInvite | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [acceptedId, setAcceptedId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -31,15 +30,11 @@ export default function InvitePage({ token }: { token: string }) {
     };
   }, [token]);
 
-  const isMember = Boolean(invite && user?.workspaces.items.some((workspace) =>
-    String(workspace.id) === String(acceptedId) || workspace.name === invite.workspaceName));
-
   const handleJoin = async () => {
     if (!invite || busy) return;
     setBusy(true);
     try {
       const workspace = await acceptInvite(token);
-      setAcceptedId(workspace.id);
       await switchWorkspace(workspace.id);
       navigate(`/w/${workspace.id}`, { replace: true });
     } catch (error) {
@@ -90,7 +85,7 @@ export default function InvitePage({ token }: { token: string }) {
                   void handleJoin();
                 }}
               >
-                {!user ? '登录后加入' : isMember ? '进入工作区' : '加入工作区'}
+                {!user ? '登录后加入' : '加入工作区'}
               </Button>
             </Stack>
           )}
