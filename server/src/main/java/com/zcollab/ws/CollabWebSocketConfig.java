@@ -1,5 +1,6 @@
 package com.zcollab.ws;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -17,17 +18,20 @@ public class CollabWebSocketConfig implements WebSocketConfigurer {
 
     private final CollabWebSocketHandler handler;
     private final CollabHandshakeInterceptor interceptor;
+    private final String[] allowedOrigins;
 
-    public CollabWebSocketConfig(CollabWebSocketHandler handler, CollabHandshakeInterceptor interceptor) {
+    public CollabWebSocketConfig(CollabWebSocketHandler handler, CollabHandshakeInterceptor interceptor,
+                                 @Value("${collab.allowed-origins}") String[] allowedOrigins) {
         this.handler = handler;
         this.interceptor = interceptor;
+        this.allowedOrigins = allowedOrigins;
     }
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(handler, "/collab/*")
                 .addInterceptors(interceptor)
-                .setAllowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*");
+                .setAllowedOriginPatterns(allowedOrigins);
     }
 
     @Bean

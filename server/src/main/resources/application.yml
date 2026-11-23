@@ -32,3 +32,5 @@ mybatis-plus:
       id-type: assign_id
 zcollab:
   upload-dir: ./uploads
+collab:
+  allowed-origins: "http://localhost,http://localhost:*,http://127.0.0.1,http://127.0.0.1:*"
