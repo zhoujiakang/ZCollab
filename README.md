@@ -1,59 +1,126 @@
-# ZCollab
+<p align="center">
+  <a href="https://docs.zzzink.cn">
+    <img src="./.github/assets/readme-cover.svg" alt="ZCollab — 让想法成文，让协作发生" width="100%" />
+  </a>
+</p>
 
-## 这是什么
+<h1 align="center">ZCollab</h1>
 
-ZCollab 是单机版文档协作系统：以工作区为单位管理页面树，支持多人实时协同编辑、全文搜索、分享链接与评论。后端是 Spring Boot 3.5 + PostgreSQL + Redis，前端是 React + Vite + TypeScript，适合个人或小团队自托管。
+<p align="center">
+  一个个人开发的在线文档协作项目。<br />
+  从一页笔记开始，把想法整理成文档，和其他人一起完善。
+</p>
 
-## 本地开发
+<p align="center">
+  <a href="https://docs.zzzink.cn"><strong>在线体验 ↗</strong></a> ·
+  <a href="#功能亮点">功能亮点</a> ·
+  <a href="#技术实现">技术实现</a> ·
+  <a href="https://github.com/zhoujiakang/ZCollab/issues">反馈与建议</a>
+</p>
 
-前置：PostgreSQL 17、Redis、JDK 21、Node 22。先建好 zcollab 数据库与用户，按 `server/sql/001~012` 顺序建表；`application.yml` 默认连本机 5432/6379。
+<p align="center">
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-74dfc7?style=flat-square&amp;labelColor=172b3a" alt="License: MIT" /></a>
+  <img src="https://img.shields.io/badge/React-19-61dafb?style=flat-square&amp;labelColor=172b3a" alt="React 19" />
+  <img src="https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square&amp;labelColor=172b3a" alt="TypeScript 5" />
+  <img src="https://img.shields.io/badge/Java-21-ed9b40?style=flat-square&amp;labelColor=172b3a" alt="Java 21" />
+  <img src="https://img.shields.io/badge/Powered_by-Yjs-b8a6fa?style=flat-square&amp;labelColor=172b3a" alt="Powered by Yjs" />
+</p>
 
-服务端：
+---
 
-```bash
-cd server && ./mvnw spring-boot:run
+## 关于这个项目
+
+ZCollab 把文档编辑、内容整理和协作讨论放进同一个工作区。你可以用它记笔记、写需求、整理知识，也可以邀请其他人一起编辑，再通过链接把文档分享出去。
+
+这是我的个人开源项目，从前端编辑器到后端协作同步逐步实现，目前仍在持续完善。欢迎到 **[docs.zzzink.cn](https://docs.zzzink.cn)** 体验。
+
+## 功能亮点
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>✍️ 多人一起写</h3>
+      <p>多人同时编辑同一份文档，实时查看彼此的光标和在线状态，让修改在同一页中汇合。</p>
+    </td>
+    <td width="50%" valign="top">
+      <h3>🗂️ 把文档组织起来</h3>
+      <p>用工作区和嵌套页面树整理内容，支持拖拽排序、移动文档、收藏与最近访问。</p>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <h3>💬 围绕内容讨论</h3>
+      <p>选中文字发起评论，在文档旁回复和标记解决，让讨论留在对应的上下文里。</p>
+    </td>
+    <td valign="top">
+      <h3>🔗 分享给更多人</h3>
+      <p>通过公开链接分享文档，或用邀请链接让其他人加入工作区，继续一起完善内容。</p>
+    </td>
+  </tr>
+</table>
+
+### 写作时用得上的细节
+
+| | 支持的能力 |
+| --- | --- |
+| **内容编辑** | 标题、列表、引用、代码高亮、表格、图片与附件 |
+| **快速操作** | 斜杠命令、命令面板、快捷键与速查表 |
+| **文档模板** | 会议记录、需求文档、周报、读书笔记等 |
+| **内容查找** | 标题与正文全文搜索、收藏、最近访问 |
+| **导入导出** | Markdown 导入与导出 |
+| **界面偏好** | 明暗主题切换 |
+
+## 技术实现
+
+前端使用 **React + TypeScript**，以 **Tiptap** 为编辑器基础，结合 **Yjs** 实现协同编辑。后端使用 **Java 21 + Spring Boot**，负责业务接口、权限校验、WebSocket 同步转发和文档持久化。
+
+```mermaid
+flowchart LR
+    A["编辑者 A · Tiptap / Yjs"] <-->|WebSocket| S["Spring Boot\n协作同步服务"]
+    B["编辑者 B · Tiptap / Yjs"] <-->|WebSocket| S
+    S --> P[("PostgreSQL\n文档快照与增量")]
+    classDef editor fill:#eef9f5,stroke:#69baa5,color:#183a38
+    classDef server fill:#eef2fb,stroke:#8c9bc8,color:#253652
+    classDef storage fill:#f4f0fc,stroke:#ab98d5,color:#403359
+    class A,B editor
+    class S server
+    class P storage
 ```
 
-Windows 用 `mvnw.cmd`。Maven 必须运行在 JDK 21 上：Maven 自身用哪个 JDK 由 `JAVA_HOME` 决定，不要用 JDK 27 —— Lombok 在新 JDK 上注解处理会静默失效，报错是一屏「找不到符号 getXxx」，看起来像代码被改坏了。
+Yjs 在客户端合并文档变更，后端转发同步消息与在线状态，并将快照和增量更新保存到 PostgreSQL。重新连接时，通过快照与增量重放恢复文档状态。
 
-前端：
+| 层次 | 技术选型 |
+| --- | --- |
+| 界面与交互 | React · TypeScript · Vite · Mantine · dnd-kit |
+| 编辑与协作 | Tiptap · Yjs · y-websocket · lowlight |
+| 业务与认证 | Spring Boot · MyBatis-Plus · Sa-Token |
+| 数据存储 | PostgreSQL · Redis |
 
-```bash
-cd client && npm install && npm run dev
+<details>
+<summary>浏览源码结构</summary>
+
+```text
+ZCollab
+├── client/src/
+│   ├── components/   编辑器、页面树、评论与应用布局
+│   ├── collab/       Yjs 文档与 WebSocket 连接
+│   ├── pages/        登录、工作区与设置页面
+│   └── lib/          Markdown、模板与文档工具
+├── server/
+│   ├── src/main/    业务接口、协作协议与持久化实现
+│   ├── src/test/    后端单元测试
+│   └── sql/         数据库脚本
+└── docs/            项目文档与开发记录
 ```
 
-开发时访问 http://localhost:5173，Vite proxy 把 `/api`、`/files`、`/collab`（含 WebSocket）转发到 8080，前端请求保持相对路径，不做 CORS。
+</details>
 
-## 目录结构
+## 交流与反馈
 
-- `client/`：前端源码、Vite 构建配置、Dockerfile 与容器内 nginx 配置。
-- `server/`：Spring Boot 后端、SQL 建表脚本与 Dockerfile。
+欢迎通过 [Issues](https://github.com/zhoujiakang/ZCollab/issues) 反馈问题、分享使用感受，或提出想看到的功能。如果这个项目对你有帮助，也欢迎留一颗 Star。
 
-## Docker 部署
+项目基于 [MIT License](./LICENSE) 开源。
 
-前置：安装 Docker Desktop（或 Docker + Compose 插件）。首次启动会拉取镜像，需要联网。
-
-可选的准备工作：`cp .env.example .env`，需要时在 .env 里改两项——`WEB_PORT`（本机 8080 被开发实例占用时改）、`POSTGRES_PASSWORD`（对外网开放前必改）。不建 .env 也能起，用的是 compose 里的默认值。
-
-```bash
-docker compose up -d --build
-```
-
-首次启动会由 `docker-entrypoint-initdb.d` 自动按 001~012 顺序建表；随后访问 http://localhost:8080，第一次进站先注册账号。之后改了代码，重新执行同一条命令（带 `--build`）即可。
-
-停止但保留数据用 `docker compose down`；连数据库和上传文件一起清空用 `docker compose down -v`。db、redis 与 api 都不映射宿主机端口（api 只走 compose 内网由 nginx 反代）。web 默认 8080；如果本机 8080 已被开发实例占用，执行 `cp .env.example .env` 并在 .env 里改 WEB_PORT，改完要重新 `docker compose up -d` 才生效（改的是容器创建时的端口映射）；如果已经起过，先 `docker compose down` 再 up，光 restart 不会改端口。默认密码只用于本机试跑，对外网开放前必须在 .env 里改 POSTGRES_PASSWORD。
-
-POSTGRES_PASSWORD 只影响数据库的初始化，容器起过一次之后就固定了；再次改 .env 不会重新初始化数据库。
-
-注意：
-
-1. 用 IP 或域名访问时设 `COLLAB_ALLOWED_ORIGINS`，例如 `http://203.0.113.10:8080`；不设就只有 localhost 能协同。
-2. initdb 只在空数据卷时执行；以后新增迁移脚本不会自动跑，需要手动 `psql` 执行。
-3. 已经起过容器再改 .env 里的 POSTGRES_PASSWORD 不会生效，数据库里的密码没变。要改得进容器改：
-   ```bash
-   docker compose exec db psql -U zcollab -d zcollab -c "ALTER USER zcollab WITH PASSWORD '新密码';"
-   ```
-   改完把 .env 里的 POSTGRES_PASSWORD 同步成同一个值，再 `docker compose up -d` 让 api 重启。
-   也可以用 `docker compose down -v` 清库重来，但那会连数据一起删掉。
-
-数据库用户名必须是 `zcollab`：`server/sql/001` 开头是 `\set app_user zcollab`，后面每个脚本都 GRANT 给这个角色。想换用户名得改脚本，容器方案里不要换。
+<p align="center">
+  <sub>由 <a href="https://github.com/zhoujiakang">zhoujiakang</a> 开发 · <a href="https://docs.zzzink.cn">去写下第一个想法 ↗</a></sub>
+</p>

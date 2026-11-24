@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
+  <title id="title">ZCollab — 让想法成文，让协作发生</title>
+  <desc id="desc">ZCollab 项目封面，以文档、连接线与协作光标表现在线文档协作。</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#111c33"/><stop offset="1" stop-color="#172e43"/></linearGradient>
+    <linearGradient id="paper" x2="1" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#e9f3f5"/></linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#fff" stroke-opacity=".035"/></pattern>
+  </defs>
+  <rect width="1280" height="520" rx="24" fill="url(#bg)"/>
+  <rect width="1280" height="520" rx="24" fill="url(#grid)"/>
+  <circle cx="1090" cy="240" r="244" fill="#56d4c0" opacity=".035"/>
+  <circle cx="1090" cy="240" r="183" fill="none" stroke="#76dfcd" stroke-opacity=".12"/>
+  <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif">
+    <rect x="72" y="66" width="38" height="38" rx="11" fill="#74dfc7"/>
+    <path d="M83 78h16l-16 15h16" fill="none" stroke="#132b3a" stroke-width="3" stroke-linejoin="round"/>
+    <text x="125" y="92" fill="#b5c7d4" font-size="15" letter-spacing="3">A PERSONAL OPEN SOURCE PROJECT</text>
+    <text x="68" y="217" fill="#fff" font-size="91" font-weight="750" letter-spacing="-4">ZCollab<tspan fill="#74dfc7">.</tspan></text>
+    <text x="73" y="280" fill="#edf3f8" font-size="31" font-weight="550">让想法成文，让协作发生。</text>
+    <text x="74" y="325" fill="#9eb2c4" font-size="18">文档整理 · 实时协作 · 分享与讨论</text>
+    <rect x="73" y="395" width="194" height="43" rx="21.5" fill="#74dfc7"/>
+    <text x="97" y="422" fill="#102a36" font-size="17" font-weight="650">docs.zzzink.cn</text>
+    <text x="289" y="422" fill="#91a9bd" font-size="14" letter-spacing="2">WRITE. CONNECT. SHARE.</text>
+    <path d="M900 148C1110 63 1215 207 1133 350M849 350C768 440 1019 479 1092 360" fill="none" stroke="#74dfc7" stroke-opacity=".3" stroke-width="2" stroke-dasharray="6 9"/>
+    <rect x="875" y="123" width="239" height="293" rx="18" fill="#000" opacity=".13" transform="rotate(10 994 270)"/>
+    <rect x="864" y="101" width="239" height="293" rx="18" fill="#385265" transform="rotate(10 984 247)"/>
+    <g transform="rotate(-7 946 250)">
+      <rect x="815" y="106" width="239" height="293" rx="18" fill="url(#paper)"/>
+      <rect x="845" y="140" width="39" height="9" rx="4.5" fill="#53bca5"/>
+      <rect x="845" y="177" width="151" height="14" rx="5" fill="#263e50"/>
+      <rect x="845" y="212" width="171" height="7" rx="3.5" fill="#b4c8d0"/>
+      <rect x="845" y="233" width="152" height="7" rx="3.5" fill="#b4c8d0"/>
+      <rect x="842" y="261" width="178" height="23" rx="4" fill="#c2eee4"/>
+      <rect x="850" y="269" width="142" height="7" rx="3.5" fill="#68ad9e"/>
+      <rect x="845" y="302" width="169" height="7" rx="3.5" fill="#b4c8d0"/>
+      <rect x="845" y="323" width="117" height="7" rx="3.5" fill="#b4c8d0"/>
+      <path d="M1021 261v27" stroke="#259b7d" stroke-width="2"/>
+    </g>
+    <g transform="translate(1061 201)">
+      <path d="M0 0v29l8-8 9 15 7-4-9-15h13Z" fill="#b8a6fa" stroke="#192b3e" stroke-width="2"/>
+      <rect x="29" y="22" width="77" height="29" rx="9" fill="#b8a6fa"/>
+      <text x="44" y="42" font-size="13" fill="#25223d" font-weight="650">一起写</text>
+    </g>
+    <g transform="translate(776 325)">
+      <path d="M0 0v29l8-8 9 15 7-4-9-15h13Z" fill="#74dfc7" stroke="#192b3e" stroke-width="2"/>
+      <rect x="-30" y="40" width="90" height="29" rx="9" fill="#74dfc7"/>
+      <text x="-15" y="60" font-size="13" fill="#183a38" font-weight="650">共同完善</text>
+    </g>
+    <circle cx="1163" cy="368" r="5" fill="#74dfc7"/>
+    <circle cx="795" cy="137" r="4" fill="#b8a6fa"/>
+  </g>
+</svg>
