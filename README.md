@@ -33,17 +33,27 @@ cd client && npm install && npm run dev
 
 前置：安装 Docker Desktop（或 Docker + Compose 插件）。首次启动会拉取镜像，需要联网。
 
+可选的准备工作：`cp .env.example .env`，需要时在 .env 里改两项——`WEB_PORT`（本机 8080 被开发实例占用时改）、`POSTGRES_PASSWORD`（对外网开放前必改）。不建 .env 也能起，用的是 compose 里的默认值。
+
 ```bash
 docker compose up -d --build
 ```
 
 首次启动会由 `docker-entrypoint-initdb.d` 自动按 001~012 顺序建表；随后访问 http://localhost:8080，第一次进站先注册账号。之后改了代码，重新执行同一条命令（带 `--build`）即可。
 
-停止但保留数据用 `docker compose down`；连数据库和上传文件一起清空用 `docker compose down -v`。db、redis 与 api 都不映射宿主机端口（api 只走 compose 内网由 nginx 反代）。web 默认 8080；如果本机 8080 已被开发实例占用，执行 `cp .env.example .env` 并在 .env 里改 WEB_PORT。默认密码只用于本机试跑，对外网开放前必须在 .env 里改 POSTGRES_PASSWORD。
+停止但保留数据用 `docker compose down`；连数据库和上传文件一起清空用 `docker compose down -v`。db、redis 与 api 都不映射宿主机端口（api 只走 compose 内网由 nginx 反代）。web 默认 8080；如果本机 8080 已被开发实例占用，执行 `cp .env.example .env` 并在 .env 里改 WEB_PORT，改完要重新 `docker compose up -d` 才生效（改的是容器创建时的端口映射）；如果已经起过，先 `docker compose down` 再 up，光 restart 不会改端口。默认密码只用于本机试跑，对外网开放前必须在 .env 里改 POSTGRES_PASSWORD。
+
+POSTGRES_PASSWORD 只影响数据库的初始化，容器起过一次之后就固定了；再次改 .env 不会重新初始化数据库。
 
 注意：
 
 1. 用 IP 或域名访问时设 `COLLAB_ALLOWED_ORIGINS`，例如 `http://203.0.113.10:8080`；不设就只有 localhost 能协同。
 2. initdb 只在空数据卷时执行；以后新增迁移脚本不会自动跑，需要手动 `psql` 执行。
+3. 已经起过容器再改 .env 里的 POSTGRES_PASSWORD 不会生效，数据库里的密码没变。要改得进容器改：
+   ```bash
+   docker compose exec db psql -U zcollab -d zcollab -c "ALTER USER zcollab WITH PASSWORD '新密码';"
+   ```
+   改完把 .env 里的 POSTGRES_PASSWORD 同步成同一个值，再 `docker compose up -d` 让 api 重启。
+   也可以用 `docker compose down -v` 清库重来，但那会连数据一起删掉。
 
 数据库用户名必须是 `zcollab`：`server/sql/001` 开头是 `\set app_user zcollab`，后面每个脚本都 GRANT 给这个角色。想换用户名得改脚本，容器方案里不要换。
