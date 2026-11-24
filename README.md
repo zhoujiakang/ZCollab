@@ -1,6 +1,9 @@
 <p align="center">
   <a href="https://docs.zzzink.cn">
-    <img src="./.github/assets/readme-cover.svg" alt="ZCollab — 让想法成文，让协作发生" width="100%" />
+    <picture>
+      <source media="(max-width: 640px)" srcset="./.github/assets/readme-cover-mobile.svg" />
+      <img src="./.github/assets/readme-cover.svg" alt="ZCollab — 让想法成文，让协作发生" width="100%" />
+    </picture>
   </a>
 </p>
 
@@ -53,21 +56,21 @@
 
 ### 🧩 让写作顺手一些
 
-支持标题、列表、引用、代码高亮、表格、图片和附件，通过斜杠命令插入内容。内置会议记录、需求文档、周报、读书笔记等模板，也支持 Markdown 导入导出、命令面板、快捷键与明暗主题。
+- **内容编辑**：标题、列表、引用、代码高亮、表格、图片与附件，通过斜杠命令快速插入。
+- **从模板开始**：会议记录、需求文档、周报、读书笔记，也能导入和导出 Markdown。
+- **按习惯操作**：命令面板、快捷键速查表与明暗主题。
 
 ### 🔗 写完之后，分享出去
 
 用公开链接分享一份文档，或通过邀请链接让其他人加入工作区，一起维护内容。
 
-### 协作与讨论实景
+## 协作实景
 
 把讨论留在内容旁边，编辑时也能看到其他协作窗口的选区与光标。
 
 ![ZCollab 深色主题：双窗口在线状态、协作选区与文档评论](./.github/assets/collaboration-dark.jpg)
 
-<p align="center"><sub>深色主题 · 同一演示账号的双窗口协作与评论</sub></p>
-
-<sub>截图均来自线上实际界面，使用为项目展示创建的示例文档与评论。</sub>
+<p align="center"><sub>深色主题 · 同一演示账号的双窗口协作与评论<br />以上均为线上实际界面，文档与评论为展示用示例内容。</sub></p>
 
 ## 技术实现
 
@@ -116,10 +119,10 @@ ZCollab
 │   ├── pages/        登录、工作区与设置页面
 │   └── lib/          Markdown、模板与文档工具
 ├── server/
-│   ├── src/main/    业务接口、协作协议与持久化实现
-│   ├── src/test/    后端单元测试
-│   └── sql/         数据库脚本
-└── docs/            项目文档与开发记录
+│   ├── src/main/     业务接口、协作协议与持久化实现
+│   ├── src/test/     后端单元测试
+│   └── sql/          数据库脚本
+└── .github/assets/   README 封面与界面截图
 ```
 
 </details>
