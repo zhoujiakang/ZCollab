@@ -5,6 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { getPublicShare, type PublicShareDoc } from '../api/share';
 import { parseDocContent } from '../lib/docContent';
 import { createContentExtensions } from './page/contentExtensions';
+import { handleAttachmentClick } from './page/Attachment';
 import editorClasses from './page/Editor.module.css';
 import classes from './SharePage.module.css';
 
@@ -21,6 +22,7 @@ function ReadOnlyBody({ content }: { content: string }) {
       handleClick: (_view, _pos, event) => {
         const target = event.target;
         if (!(target instanceof Element)) return false;
+        if (handleAttachmentClick(target, event)) return true;
         const link = target.closest('a[href]') as HTMLAnchorElement | null;
         if (!link || !(event.metaKey || event.ctrlKey)) return false;
         window.open(link.href, '_blank', 'noopener');

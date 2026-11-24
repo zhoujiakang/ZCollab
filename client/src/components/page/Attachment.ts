@@ -14,6 +14,24 @@ export function formatFileSize(bytes: number): string {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Trigger downloads outside contenteditable so selecting an atomic node cannot swallow the click. */
+export function handleAttachmentClick(target: Element, event: MouseEvent): boolean {
+  const attachment = target.closest<HTMLAnchorElement>('a[data-attachment]');
+  if (!attachment) return false;
+  event.preventDefault();
+  const download = document.createElement('a');
+  download.href = attachment.href;
+  download.download = attachment.getAttribute('download') ?? attachment.getAttribute('data-name') ?? '';
+  download.rel = 'noopener noreferrer';
+  document.body.appendChild(download);
+  try {
+    download.click();
+  } finally {
+    download.remove();
+  }
+  return true;
+}
+
 const FILE_ICON: DOMOutputSpec = [
   'svg',
   {
@@ -31,7 +49,7 @@ const FILE_ICON: DOMOutputSpec = [
   ['path', { d: 'M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z' }],
 ];
 
-/** 正文里只存 url / name / size；卡片本身是一个链接，点和分享页都直接打开 /files/... */
+/** 编辑页与分享页共用下载卡片；服务端同时为附件设置 attachment 响应头。 */
 export const Attachment = Node.create({
   name: 'attachment',
   group: 'block',
@@ -73,10 +91,11 @@ export const Attachment = Node.create({
       mergeAttributes(HTMLAttributes, {
         'data-attachment': '',
         href: url,
-        target: '_blank',
+        download: name,
         rel: 'noopener noreferrer',
         class: 'attachment-card',
-        title: `打开 ${name}`,
+        title: `下载 ${name}`,
+        'aria-label': `下载附件 ${name}`,
       }),
       FILE_ICON,
       [

@@ -9,19 +9,29 @@ import {
 } from '../../api/comment';
 
 export function useComments(docId: string | undefined) {
-  const [comments, setComments] = useState<DocComment[]>([]);
+  const [state, setState] = useState<{ docId: string | undefined; comments: DocComment[] }>({ docId, comments: [] });
   const requestSeq = useRef(0);
+  const activeDocId = useRef(docId);
+  activeDocId.current = docId;
 
   const reload = useCallback(async () => {
-    if (!docId) return;
+    if (!docId || activeDocId.current !== docId) return;
     const seq = ++requestSeq.current;
     const next = await listComments(docId);
-    if (seq === requestSeq.current) setComments(next);
+    if (seq === requestSeq.current && activeDocId.current === docId) {
+      setState({ docId, comments: next });
+    }
   }, [docId]);
 
   useEffect(() => {
+    activeDocId.current = docId;
+    setState({ docId, comments: [] });
     void reload().catch(() => undefined);
-  }, [reload]);
+    return () => {
+      requestSeq.current += 1;
+      if (activeDocId.current === docId) activeDocId.current = undefined;
+    };
+  }, [docId, reload]);
 
   const create = useCallback(async (input: CreateCommentInput) => {
     await createComment(input);
@@ -38,5 +48,7 @@ export function useComments(docId: string | undefined) {
     await reload();
   }, [reload]);
 
+  // Hide the preceding document's comments during the render before the new effect runs.
+  const comments = state.docId === docId ? state.comments : [];
   return { comments, reload, create, resolve, remove };
 }

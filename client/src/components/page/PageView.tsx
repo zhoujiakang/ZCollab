@@ -46,6 +46,7 @@ import { useCommentsContext } from '../layout/CommentsContext';
 import ShareDialog from '../ShareDialog';
 import { CommentAnchors } from './CommentAnchors';
 import { createContentExtensions } from './contentExtensions';
+import { handleAttachmentClick } from './Attachment';
 import { BlockHandle } from './BlockHandle';
 import { SlashCommand } from './SlashCommand';
 import FloatingBlockTools from './FloatingBlockTools';
@@ -301,6 +302,7 @@ function CollabEditor({
       handleClick: (_view, _pos, event) => {
         const target = event.target;
         if (!(target instanceof Element)) return false;
+        if (handleAttachmentClick(target, event)) return true;
         const highlight = target.closest<HTMLElement>('[data-comment-id]');
         if (highlight?.dataset.commentId) {
           onCommentClickRef.current(highlight.dataset.commentId);

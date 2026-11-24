@@ -1,6 +1,7 @@
 package com.zcollab.config;
 
 import cn.dev33.satoken.interceptor.SaInterceptor;
+import com.zcollab.file.AttachmentDownloadInterceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.CacheControl;
@@ -27,6 +28,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // 无参构造：isAnnotation 默认为 true、auth 为空实现，仅执行注解鉴权。
         // @SaCheckLogin 靠该拦截器的 preHandle 触发，只打注解不注册拦截器不会拦住任何请求。
         registry.addInterceptor(new SaInterceptor()).addPathPatterns("/api/**");
+        registry.addInterceptor(new AttachmentDownloadInterceptor()).addPathPatterns("/files/**");
     }
 
     @Override
