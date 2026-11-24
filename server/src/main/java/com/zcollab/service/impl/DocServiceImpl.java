@@ -118,6 +118,7 @@ public class DocServiceImpl implements DocService {
     }
 
     private Doc insertDoc(Long workspaceId, Long parentDocId, String title) {
+        docMapper.lockWorkspaceTree(workspaceId);
         if (parentDocId != null) {
             requireDoc(parentDocId, workspaceId);
         }
@@ -188,6 +189,7 @@ public class DocServiceImpl implements DocService {
     @Transactional
     public void delete(Long id) {
         Long workspaceId = currentWorkspaceId();
+        docMapper.lockWorkspaceTree(workspaceId);
         requireDoc(id, workspaceId);
         List<Long> ids = docMapper.selectDescendantIds(id, workspaceId);
         if (ids.isEmpty()) {
@@ -204,6 +206,7 @@ public class DocServiceImpl implements DocService {
     @Transactional
     public void move(Long id, Long parentId, Long beforeDocId) {
         Long workspaceId = currentWorkspaceId();
+        docMapper.lockWorkspaceTree(workspaceId);
         Doc doc = requireDoc(id, workspaceId);
         if (parentId != null) {
             requireDoc(parentId, workspaceId);

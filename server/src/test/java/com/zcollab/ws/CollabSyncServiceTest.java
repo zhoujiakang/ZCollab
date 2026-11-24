@@ -316,6 +316,7 @@ class CollabSyncServiceTest {
 
         private FakeSession(String id) {
             this.id = id;
+            TestSessionToken.issue(attributes, 9L);
         }
 
         @Override

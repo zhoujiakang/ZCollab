@@ -268,6 +268,15 @@ public class CollabSyncService {
     }
 
     private void send(WebSocketSession session, byte[] frame) {
+        // 过期连接即使不再发送消息，也不能继续接收其他人的编辑或在线状态。
+        if (!CollabSessionToken.isValid(session)) {
+            try {
+                session.close(new org.springframework.web.socket.CloseStatus(4401, "登录已失效"));
+            } catch (IOException e) {
+                log.warn("关闭失效连接 {} 失败", session.getId());
+            }
+            return;
+        }
         synchronized (session) {
             if (!session.isOpen()) {
                 return;

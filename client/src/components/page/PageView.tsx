@@ -38,6 +38,7 @@ import { useWorkspace } from '../../context/WorkspaceContext';
 import { useCollabDoc, type CollabStatus } from '../../collab/useCollabDoc';
 import { computeCommentRanges, type CommentRange } from '../../lib/commentAnchor';
 import { hasDocContent, parseDocContent } from '../../lib/docContent';
+import { docSavePayload, TitleChanges } from '../../lib/docSave';
 import { docToMarkdown, downloadMarkdownFile } from '../../lib/markdownExport';
 import { getDocPath } from '../../lib/docTree';
 import { useAside, type AsideHeading } from '../layout/AsideContext';
@@ -616,7 +617,7 @@ export default function PageView() {
   const [shareOpened, setShareOpened] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const { ydoc, provider, status } = useCollabDoc(docId ?? null);
+  const { ydoc, provider, status } = useCollabDoc(docId ?? null, workspace);
   const { publish, open: openAside } = useAside();
   const {
     comments, activeId, setActiveId, reportLocatedIds,
@@ -630,8 +631,10 @@ export default function PageView() {
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
 
   const titleRef = useRef('');
+  const titleChangesRef = useRef(new TitleChanges());
   const editorRef = useRef<Editor | null>(null);
   const docIdRef = useRef<string | null>(null);
+  const docWorkspaceRef = useRef(workspace);
   const mountedRef = useRef(true);
   const dirtyRef = useRef(false);
   const pendingRef = useRef(false);
@@ -667,12 +670,9 @@ export default function PageView() {
   );
 
   const getPayload = useCallback(() => {
-    const payload: { title: string; content?: string; text?: string } = { title: titleRef.current };
-    if (editorRef.current) {
-      payload.content = JSON.stringify(editorRef.current.getJSON());
-      payload.text = editorRef.current.getText();
-    }
-    return payload;
+    const current = editorRef.current;
+    return docSavePayload(titleRef.current, titleChangesRef.current.pending,
+      current ? { json: current.getJSON(), text: current.getText() } : undefined);
   }, []);
 
   const performSave = useCallback((): Promise<void> => {
@@ -683,11 +683,18 @@ export default function PageView() {
 
     dirtyRef.current = false;
     const payload = getPayload();
+    const titleChanges = titleChangesRef.current;
+    const titleRevision = titleChanges.revision;
     setSaveStatus('saving');
 
-    const request = updateDoc(id, payload)
+    const request = updateDoc(id, payload, docWorkspaceRef.current)
       .then((doc) => {
         if (!isCurrentDoc(id)) return;
+        if (payload.title !== undefined) titleChanges.acknowledge(titleRevision);
+        if (!titleChangesRef.current.pending) {
+          titleRef.current = doc.title;
+          setTitle(doc.title);
+        }
         setDocs((prev) => prev.map((item) => (item.id === doc.id ? { ...item, title: doc.title } : item)));
         setSelected((prev) => (prev && prev.id === doc.id ? { ...prev, ...doc } : prev));
         setSaveStatus(dirtyRef.current ? (pendingRef.current ? 'saving' : 'unsaved') : 'saved');
@@ -824,7 +831,9 @@ export default function PageView() {
   const openDoc = useCallback((doc: Doc) => {
     clearSaveTimer();
     docIdRef.current = doc.id;
+    docWorkspaceRef.current = workspace;
     titleRef.current = doc.title;
+    titleChangesRef.current = new TitleChanges();
     dirtyRef.current = false;
     pendingRef.current = false;
     needsIndexRef.current = Boolean(!doc.contentText && doc.content);
@@ -838,7 +847,7 @@ export default function PageView() {
     setAnchorEditor(null);
     commentRangesRef.current = [];
     publish(null);
-  }, [clearSaveTimer, publish]);
+  }, [clearSaveTimer, publish, workspace]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -876,7 +885,7 @@ export default function PageView() {
         dirtyRef.current = false;
         pendingRef.current = false;
         needsIndexRef.current = false;
-        const doc = await getDoc(docId);
+        const doc = await getDoc(docId, workspace);
         if (!active) return;
         openDoc(doc);
         void visitDoc(doc.id)
@@ -898,7 +907,7 @@ export default function PageView() {
     return () => {
       active = false;
     };
-  }, [docId, flushBeforeSwitch, openDoc, refreshRecent]);
+  }, [docId, workspace, flushBeforeSwitch, openDoc, refreshRecent]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1124,6 +1133,7 @@ export default function PageView() {
               onChange={(event) => {
                 const value = event.currentTarget.value;
                 titleRef.current = value;
+                titleChangesRef.current.markChanged();
                 setTitle(value);
                 markDirty();
               }}

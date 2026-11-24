@@ -3,6 +3,7 @@ package com.zcollab.ws;
 import com.zcollab.core.store.InMemoryDocStore;
 import com.zcollab.service.WorkspaceMemberRemoved;
 import com.zcollab.service.WorkspaceMemberService;
+import com.zcollab.service.LoginTokenRevoked;
 import com.zcollab.vo.workspace.WorkspaceMembership;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.socket.BinaryMessage;
@@ -20,6 +21,44 @@ import static com.zcollab.ws.CollabHandshakeInterceptor.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CollabWebSocketHandlerTest {
+    @Test
+    void revokedTokenCannotSendUpdatesEvenWhileUserRemainsAMember() throws Exception {
+        Harness h = new Harness();
+        Session session = new Session("old-login", 42, 7, 9);
+        h.handler.afterConnectionEstablished(session.socket);
+        TestSessionToken.revoke(session.attributes);
+        h.handler.handleMessage(session.socket, update());
+        assertFalse(session.open);
+        assertTrue(h.store.readUpdates(42).isEmpty());
+    }
+
+    @Test
+    void revokedTokenCannotReceiveAnotherEditorsUpdates() throws Exception {
+        Harness h = new Harness();
+        Session revoked = new Session("revoked", 42, 7, 9);
+        Session current = new Session("current", 42, 7, 9);
+        h.handler.afterConnectionEstablished(revoked.socket);
+        h.handler.afterConnectionEstablished(current.socket);
+        revoked.messages.clear();
+        TestSessionToken.revoke(revoked.attributes);
+        h.handler.handleMessage(current.socket, update());
+        assertFalse(revoked.open);
+        assertTrue(revoked.messages.isEmpty());
+        assertTrue(current.open);
+    }
+
+    @Test
+    void logoutEventDisconnectsOnlyTheRevokedLogin() {
+        Harness h = new Harness();
+        Session oldLogin = new Session("old", 42, 7, 9);
+        Session currentLogin = new Session("current", 42, 7, 9);
+        h.handler.afterConnectionEstablished(oldLogin.socket);
+        h.handler.afterConnectionEstablished(currentLogin.socket);
+        h.handler.onTokenRevoked(new LoginTokenRevoked((String) oldLogin.attributes.get(ATTR_TOKEN)));
+        assertFalse(oldLogin.open);
+        assertTrue(currentLogin.open);
+        assertEquals(1, h.registry.size(42L));
+    }
     @Test
     void removalClosesAllTargetConnectionsButKeepsOtherMembersAndWorkspaces() throws Exception {
         Harness h = new Harness();
@@ -98,6 +137,7 @@ class CollabWebSocketHandlerTest {
             attributes.put(ATTR_DOC_ID, docId);
             attributes.put(ATTR_WORKSPACE_ID, workspaceId);
             attributes.put(ATTR_USER_ID, userId);
+            TestSessionToken.issue(attributes, userId);
             socket = (WebSocketSession) Proxy.newProxyInstance(getClass().getClassLoader(),
                     new Class<?>[]{WebSocketSession.class}, (proxy, method, args) -> switch (method.getName()) {
                         case "getId" -> id;

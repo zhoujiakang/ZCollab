@@ -92,33 +92,33 @@ export function WorkspaceProvider({ workspaceId, children }: { workspaceId: stri
   const reloadDocs = useCallback(async () => {
     setLoadingDocs(true);
     try {
-      setDocs(await listDocs());
+      setDocs(await listDocs(workspaceId));
     } catch (error) {
       notifyError(error);
     } finally {
       setLoadingDocs(false);
     }
-  }, []);
+  }, [workspaceId]);
 
   const refreshFavorites = useCallback(async () => {
     const request = ++favoritesRequestRef.current;
     try {
-      const items = await listFavorites();
+      const items = await listFavorites(workspaceId);
       if (request === favoritesRequestRef.current) setFavorites(items);
     } catch {
       if (request === favoritesRequestRef.current) setFavorites([]);
     }
-  }, []);
+  }, [workspaceId]);
 
   const refreshRecent = useCallback(async () => {
     const request = ++recentRequestRef.current;
     try {
-      const items = await listRecentDocs();
+      const items = await listRecentDocs(workspaceId);
       if (request === recentRequestRef.current) setRecent(items);
     } catch {
       if (request === recentRequestRef.current) setRecent([]);
     }
-  }, []);
+  }, [workspaceId]);
 
   useEffect(() => {
     let active = true;
@@ -128,7 +128,7 @@ export function WorkspaceProvider({ workspaceId, children }: { workspaceId: stri
     favoritesRequestRef.current += 1;
     recentRequestRef.current += 1;
     setLoadingDocs(true);
-    listDocs()
+    listDocs(workspaceId)
       .then((items) => {
         if (active) setDocs(items);
       })
@@ -152,11 +152,11 @@ export function WorkspaceProvider({ workspaceId, children }: { workspaceId: stri
   const create = useCallback(
     async (parentDocId?: string | null) => {
       await flushPendingSave();
-      const doc = await createDoc(parentDocId ?? null);
+      const doc = await createDoc(parentDocId ?? null, workspaceId);
       setDocs((prev) => [...prev, { id: doc.id, parentDocId: doc.parentDocId, title: doc.title }]);
       return doc;
     },
-    [flushPendingSave],
+    [flushPendingSave, workspaceId],
   );
 
   const createFromTemplate = useCallback(
@@ -169,24 +169,24 @@ export function WorkspaceProvider({ workspaceId, children }: { workspaceId: stri
         parentId: parentDocId ?? null,
         content: JSON.stringify(json),
         contentText: text,
-      });
+      }, workspaceId);
       setDocs((prev) => [...prev, { id: doc.id, parentDocId: doc.parentDocId, title: doc.title }]);
       return doc;
     },
-    [create, flushPendingSave],
+    [create, flushPendingSave, workspaceId],
   );
 
   const remove = useCallback(
     async (id: string) => {
       await flushPendingSave();
-      await deleteDoc(id);
+      await deleteDoc(id, workspaceId);
       setDocs((prev) => {
         const removed = collectRemoved(prev, id);
         return prev.filter((item) => !removed.has(item.id));
       });
       await Promise.all([refreshFavorites(), refreshRecent()]);
     },
-    [flushPendingSave, refreshFavorites, refreshRecent],
+    [flushPendingSave, refreshFavorites, refreshRecent, workspaceId],
   );
 
   const toggleFavorite = useCallback(

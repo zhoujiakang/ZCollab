@@ -1,4 +1,5 @@
 import axios, { type AxiosRequestConfig } from 'axios';
+import { scopeWorkspaceRequest } from '../lib/workspaceScope';
 
 interface ApiResponse<T> {
   code: number;
@@ -11,6 +12,10 @@ const http = axios.create({
   withCredentials: true,
   timeout: 10000,
 });
+
+function scopedConfig(config?: AxiosRequestConfig): AxiosRequestConfig {
+  return scopeWorkspaceRequest(typeof window === 'undefined' ? '' : window.location.pathname, config);
+}
 
 function unwrap<T>(envelope: ApiResponse<T>): T {
   if (!envelope || typeof envelope.code !== 'number') {
@@ -42,7 +47,7 @@ function rethrow(error: unknown): never {
 
 export async function apiGet<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
   try {
-    const { data } = await http.get<ApiResponse<T>>(url, config);
+    const { data } = await http.get<ApiResponse<T>>(url, scopedConfig(config));
     return unwrap(data);
   } catch (error) {
     return rethrow(error);
@@ -51,7 +56,7 @@ export async function apiGet<T>(url: string, config?: AxiosRequestConfig): Promi
 
 export async function apiPost<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {
   try {
-    const { data } = await http.post<ApiResponse<T>>(url, body ?? {}, config);
+    const { data } = await http.post<ApiResponse<T>>(url, body ?? {}, scopedConfig(config));
     return unwrap(data);
   } catch (error) {
     return rethrow(error);
@@ -60,7 +65,7 @@ export async function apiPost<T>(url: string, body?: unknown, config?: AxiosRequ
 
 export async function apiUpload<T>(url: string, form: FormData): Promise<T> {
   try {
-    const { data } = await http.post<ApiResponse<T>>(url, form, { timeout: 60000 });
+    const { data } = await http.post<ApiResponse<T>>(url, form, scopedConfig({ timeout: 60000 }));
     return unwrap(data);
   } catch (error) {
     return rethrow(error);
@@ -69,7 +74,7 @@ export async function apiUpload<T>(url: string, form: FormData): Promise<T> {
 
 export async function apiPostVoid(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<void> {
   try {
-    const { data } = await http.post<ApiResponse<unknown>>(url, body ?? {}, config);
+    const { data } = await http.post<ApiResponse<unknown>>(url, body ?? {}, scopedConfig(config));
     if (data && typeof data.code === 'number' && data.code !== 0) {
       throw new Error(data.message || '请求失败');
     }

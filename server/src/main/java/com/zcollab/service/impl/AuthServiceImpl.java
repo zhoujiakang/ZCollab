@@ -11,6 +11,8 @@ import com.zcollab.exception.BusinessException;
 import com.zcollab.exception.ErrorCode;
 import com.zcollab.mapper.UserMapper;
 import com.zcollab.service.AuthService;
+import com.zcollab.service.LoginTokenRevoked;
+import org.springframework.context.ApplicationEventPublisher;
 import com.zcollab.vo.auth.LoginResponse;
 import com.zcollab.vo.auth.RegisterResponse;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -22,10 +24,13 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserMapper userMapper;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher events;
 
-    public AuthServiceImpl(UserMapper userMapper, BCryptPasswordEncoder passwordEncoder) {
+    public AuthServiceImpl(UserMapper userMapper, BCryptPasswordEncoder passwordEncoder,
+                           ApplicationEventPublisher events) {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
+        this.events = events;
     }
 
     @Override
@@ -57,7 +62,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void logout() {
+        String token = StpUtil.getTokenValue();
         StpUtil.logout();
+        events.publishEvent(new LoginTokenRevoked(token));
     }
 
     @Override
@@ -86,5 +93,6 @@ public class AuthServiceImpl implements AuthService {
     private void kickToken(String token) {
         StpUtil.logoutByTokenValue(token);
         SaManager.getSaTokenDao().delete(StpUtil.getStpLogic().splicingKeyTokenValue(token));
+        events.publishEvent(new LoginTokenRevoked(token));
     }
 }

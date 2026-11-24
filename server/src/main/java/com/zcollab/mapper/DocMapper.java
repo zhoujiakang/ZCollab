@@ -14,6 +14,10 @@ import java.util.List;
 
 public interface DocMapper extends BaseMapper<Doc> {
 
+    /** Serialize tree mutations before reading ancestry, including writes to different documents. */
+    @Select("SELECT id FROM workspace WHERE id = #{workspaceId} FOR UPDATE")
+    Long lockWorkspaceTree(@Param("workspaceId") Long workspaceId);
+
     @Select("SELECT id FROM doc WHERE id = #{docId} FOR UPDATE")
     Long lockDocument(@Param("docId") long docId);
 

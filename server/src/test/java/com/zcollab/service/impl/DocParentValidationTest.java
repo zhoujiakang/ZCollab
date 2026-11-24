@@ -70,6 +70,7 @@ class DocParentValidationTest {
         Harness(Doc parent) {
             DocMapper mapper = (DocMapper) Proxy.newProxyInstance(getClass().getClassLoader(),
                     new Class<?>[]{DocMapper.class}, (proxy, method, args) -> switch (method.getName()) {
+                        case "lockWorkspaceTree" -> 1L;
                         case "selectById" -> Long.valueOf(99).equals(args[0]) ? parent : inserted;
                         case "selectNextSortOrder" -> 0;
                         case "insert" -> {

@@ -126,7 +126,7 @@ class DocServiceImplTest {
 
         assertEquals(ErrorCode.BAD_REQUEST, error.getErrorCode());
         assertEquals("不能移动到自己的子页面下", error.getMessage());
-        assertEquals(List.of("selectById", "selectById", "selectDescendantIds"), harness.calls);
+        assertEquals(List.of("lockWorkspaceTree", "selectById", "selectById", "selectDescendantIds"), harness.calls);
         assertEquals(0, harness.updateCount);
     }
 
@@ -154,7 +154,7 @@ class DocServiceImplTest {
                 () -> harness.service().move(1L, 2L, null));
 
         assertEquals(ErrorCode.NOT_FOUND, error.getErrorCode());
-        assertEquals(List.of("selectById", "selectById"), harness.calls);
+        assertEquals(List.of("lockWorkspaceTree", "selectById", "selectById"), harness.calls);
         assertEquals(0, harness.updateCount);
     }
 
@@ -305,6 +305,7 @@ class DocServiceImplTest {
             DocMapper mapper = (DocMapper) Proxy.newProxyInstance(
                     getClass().getClassLoader(), new Class<?>[]{DocMapper.class},
                     (proxy, method, args) -> switch (method.getName()) {
+                        case "lockWorkspaceTree" -> 1L;
                         case "selectNextSortOrder" -> {
                             sortParentId = (Long) args[1];
                             yield 9;
@@ -365,6 +366,7 @@ class DocServiceImplTest {
                     (proxy, method, args) -> {
                         calls.add(method.getName());
                         return switch (method.getName()) {
+                            case "lockWorkspaceTree" -> 1L;
                             case "selectById" -> docs.get(args[0]);
                             case "selectDescendantIds" -> descendants;
                             case "selectSortedSiblingIds" -> siblings;

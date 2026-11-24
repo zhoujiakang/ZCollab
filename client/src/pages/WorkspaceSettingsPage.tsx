@@ -210,7 +210,7 @@ export default function WorkspaceSettingsPage() {
     try {
       if (confirm.kind === 'leave') {
         await removeMember(String(user.id));
-        await refreshMe();
+        await refreshMe(null);
         navigate('/home');
         notifications.show({ color: 'green', title: '已退出', message: '你已退出该工作区' });
       } else if (confirm.kind === 'remove') {

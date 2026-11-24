@@ -2,6 +2,8 @@ package com.zcollab.ws;
 
 import com.zcollab.service.WorkspaceMemberRemoved;
 import com.zcollab.service.WorkspaceMemberService;
+import com.zcollab.service.LoginTokenRevoked;
+import org.springframework.context.event.EventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -94,6 +96,11 @@ public class CollabWebSocketHandler extends BinaryWebSocketHandler {
     }
 
     private boolean requireMembership(WebSocketSession session) {
+        if (!CollabSessionToken.isValid(session)) {
+            close(session, CLOSE_UNAUTHORIZED, "登录已失效");
+            removeAndLog(session);
+            return false;
+        }
         Long workspaceId = (Long) session.getAttributes().get(ATTR_WORKSPACE_ID);
         Long userId = (Long) session.getAttributes().get(ATTR_USER_ID);
         if (workspaceId != null && userId != null && members.findMembership(workspaceId, userId) != null) {
@@ -102,6 +109,18 @@ public class CollabWebSocketHandler extends BinaryWebSocketHandler {
         close(session, CLOSE_UNAUTHORIZED, "没有工作区访问权限");
         removeAndLog(session);
         return false;
+    }
+
+    @EventListener
+    public void onTokenRevoked(LoginTokenRevoked event) {
+        for (Set<WebSocketSession> sessions : registry.snapshot().values()) {
+            for (WebSocketSession session : sessions) {
+                if (event.token() != null && event.token().equals(session.getAttributes().get(ATTR_TOKEN))) {
+                    close(session, CLOSE_UNAUTHORIZED, "登录已失效");
+                    removeAndLog(session);
+                }
+            }
+        }
     }
 
     @Override
@@ -122,6 +141,11 @@ public class CollabWebSocketHandler extends BinaryWebSocketHandler {
         for (Map.Entry<Long, Set<WebSocketSession>> entry : registry.snapshot().entrySet()) {
             Long docId = entry.getKey();
             for (WebSocketSession session : entry.getValue()) {
+                if (!CollabSessionToken.isValid(session)) {
+                    close(session, CLOSE_UNAUTHORIZED, "登录已失效");
+                    removeAndLog(session);
+                    continue;
+                }
                 AtomicLong lastActive = (AtomicLong) session.getAttributes().get(ATTR_LAST_ACTIVE_AT);
                 long last = lastActive == null ? 0L : lastActive.get();
                 if (now - last >= IDLE_TIMEOUT_MS) {

@@ -12,7 +12,7 @@ import { createWorkspace as createWorkspaceRequest, switchWorkspace as switchWor
 interface AuthContextValue {
   user: MeUser | null;
   loading: boolean;
-  refreshMe: () => Promise<MeUser>;
+  refreshMe: (workspaceId?: string | null) => Promise<MeUser>;
   login: (username: string, password: string) => Promise<MeUser>;
   register: (username: string, password: string, name: string) => Promise<RegisteredUser>;
   logout: () => Promise<void>;
@@ -28,7 +28,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    fetchMe()
+    // 登录态先独立于路由确认；无权访问的工作区交给 WorkspaceRoute 处理。
+    fetchMe({}, null)
       .then((me) => {
         if (active) setUser(me);
       })
@@ -43,8 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const refreshMe = useCallback(async () => {
-    const me = await fetchMe();
+  const refreshMe = useCallback(async (workspaceId?: string | null) => {
+    const me = await fetchMe({}, workspaceId);
     setUser(me);
     return me;
   }, []);
@@ -68,8 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const createWorkspace = useCallback(
     async (name: string) => {
-      await createWorkspaceRequest(name);
-      return refreshMe();
+      const created = await createWorkspaceRequest(name);
+      return refreshMe(created.id);
     },
     [refreshMe],
   );
@@ -77,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchWorkspace = useCallback(
     async (id: string) => {
       await switchWorkspaceRequest(id);
-      return refreshMe();
+      return refreshMe(id);
     },
     [refreshMe],
   );

@@ -198,6 +198,9 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService {
         WorkspaceMember member = workspaceId == null ? null : findMember(workspaceId, userId);
 
         if (member == null) {
+            if (workspaceContext.hasRequestWorkspace()) {
+                throw new BusinessException(ErrorCode.FORBIDDEN, "没有该工作区的访问权限");
+            }
             workspaceContext.clearActiveWorkspaceId();
             List<WorkspaceSummaryResponse> workspaces = listWorkspaces(userId);
             if (workspaces.isEmpty()) {

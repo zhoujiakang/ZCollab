@@ -113,6 +113,9 @@ public class WorkspaceServiceImpl implements WorkspaceService {
             if (active.isPresent()) {
                 return active.get();
             }
+            if (workspaceContext.hasRequestWorkspace()) {
+                throw new BusinessException(ErrorCode.FORBIDDEN, "没有该工作区的访问权限");
+            }
             workspaceContext.clearActiveWorkspaceId();
         }
         if (workspaces.isEmpty()) {

@@ -1,4 +1,5 @@
 import { apiPost, apiPostVoid } from './client';
+import { workspaceConfig } from '../lib/workspaceScope';
 import type { PageParams, PageResponse, WorkspaceSummary } from './workspace';
 
 export interface AuthUser {
@@ -31,6 +32,6 @@ export function logout(): Promise<void> {
   return apiPostVoid('/auth/logout');
 }
 
-export function fetchMe(params: PageParams = {}): Promise<MeUser> {
-  return apiPost<MeUser>('/users/me', params);
+export function fetchMe(params: PageParams = {}, workspaceId?: string | null): Promise<MeUser> {
+  return apiPost<MeUser>('/users/me', params, workspaceConfig(workspaceId));
 }
