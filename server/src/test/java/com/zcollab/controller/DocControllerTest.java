@@ -48,4 +48,18 @@ class DocControllerTest {
                         .content("{\"title\":\"a\",\"content\":\"{}\"}"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void compactRejectsLegacyRequestWithoutPreparedVersion() throws Exception {
+        DocService service = (DocService) Proxy.newProxyInstance(
+                getClass().getClassLoader(), new Class<?>[]{DocService.class},
+                (proxy, method, args) -> { throw new AssertionError("Invalid request reached service"); });
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new DocController(service))
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+
+        mvc.perform(post("/api/doc/compact")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"id\":42,\"snapshot\":\"AAA=\"}"))
+                .andExpect(status().isBadRequest());
+    }
 }

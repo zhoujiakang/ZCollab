@@ -1,6 +1,7 @@
 package com.zcollab.controller;
 
 import com.zcollab.common.ApiResponse;
+import com.zcollab.core.store.DocState;
 import com.zcollab.dto.doc.CompactDocRequest;
 import com.zcollab.dto.doc.CreateDocRequest;
 import com.zcollab.dto.doc.DeleteDocRequest;
@@ -85,6 +86,11 @@ public class DocController {
         return ApiResponse.ok();
     }
 
+    @PostMapping("/compact/prepare")
+    public ApiResponse<DocState> prepareCompact(@RequestBody @Valid GetDocRequest request) {
+        return ApiResponse.ok(docService.prepareCompact(request.getId()));
+    }
+
     @PostMapping("/compact")
     public ApiResponse<Void> compact(@RequestBody @Valid CompactDocRequest request) {
         byte[] snapshot;
@@ -93,7 +99,7 @@ public class DocController {
         } catch (IllegalArgumentException e) {
             throw new BusinessException(ErrorCode.BAD_REQUEST);
         }
-        docService.compact(request.getId(), snapshot);
+        docService.compact(request.getId(), snapshot, request.getVersion());
         return ApiResponse.ok();
     }
 

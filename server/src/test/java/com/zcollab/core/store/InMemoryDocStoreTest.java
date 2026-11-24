@@ -22,16 +22,14 @@ class InMemoryDocStoreTest {
 
         store.appendUpdate(7, first);
         store.appendUpdate(7, second);
-        store.saveSnapshot(7, snapshot);
+        store.saveSnapshot(7, snapshot, store.readState(7).version());
         store.appendUpdate(8, first);
 
-        assertEquals(2, store.readUpdates(7).size());
-        assertArrayEquals(first, store.readUpdates(7).get(0));
-        assertArrayEquals(second, store.readUpdates(7).get(1));
+        assertEquals(0, store.readUpdates(7).size());
         assertArrayEquals(snapshot, store.readSnapshot(7));
         assertEquals(1, store.readUpdates(8).size());
 
-        store.saveSnapshot(7, second);
+        store.saveSnapshot(7, second, store.readState(7).version());
         assertArrayEquals(second, store.readSnapshot(7));
     }
 }

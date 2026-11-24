@@ -12,13 +12,13 @@ public class InMemoryDocStore implements DocStore {
     private final ConcurrentHashMap<Long, List<byte[]>> updates = new ConcurrentHashMap<>();
 
     @Override
-    public byte[] readSnapshot(long docId) {
+    public synchronized byte[] readSnapshot(long docId) {
         byte[] snapshot = snapshots.get(docId);
         return snapshot == null ? null : snapshot.clone();
     }
 
     @Override
-    public List<byte[]> readUpdates(long docId) {
+    public synchronized List<byte[]> readUpdates(long docId) {
         List<byte[]> stored = updates.get(docId);
         if (stored == null) {
             return List.of();
@@ -27,14 +27,22 @@ public class InMemoryDocStore implements DocStore {
     }
 
     @Override
-    public void appendUpdate(long docId, byte[] update) {
+    public synchronized void appendUpdate(long docId, byte[] update) {
         Objects.requireNonNull(update, "update");
         updates.computeIfAbsent(docId, ignored -> new CopyOnWriteArrayList<>()).add(update.clone());
     }
 
     @Override
-    public void saveSnapshot(long docId, byte[] snapshot) {
+    public synchronized DocState readState(long docId) {
+        return DocStore.super.readState(docId);
+    }
+
+    @Override
+    public synchronized boolean saveSnapshot(long docId, byte[] snapshot, String expectedVersion) {
         Objects.requireNonNull(snapshot, "snapshot");
+        if (!readState(docId).version().equals(expectedVersion)) return false;
         snapshots.put(docId, snapshot.clone());
+        updates.remove(docId);
+        return true;
     }
 }

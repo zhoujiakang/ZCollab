@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { WebsocketProvider } from 'y-websocket';
 import * as Y from 'yjs';
-import { apiPostVoid } from '../api/client';
+import { apiPost, apiPostVoid } from '../api/client';
 import { getCollabBaseUrl } from '../lib/collab/url';
+import { buildCompactSnapshot, type PersistedDocState } from '../lib/collab/snapshot';
 
 export type CollabStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -13,15 +14,16 @@ interface CollabSession {
 
 async function compactSnapshot(docId: string, ydoc: Y.Doc): Promise<void> {
   try {
-    const bytes = Y.encodeStateAsUpdate(ydoc);
-    let binary = '';
-    const chunkSize = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-    }
-    await apiPostVoid('/doc/compact', { id: docId, snapshot: btoa(binary) });
+    // 卸载会销毁 ydoc，必须在第一个 await 之前保留本地内容。
+    const local = Y.encodeStateAsUpdate(ydoc);
+    const state = await apiPost<PersistedDocState>('/doc/compact/prepare', { id: docId });
+    await apiPostVoid('/doc/compact', {
+      id: docId,
+      snapshot: buildCompactSnapshot(local, state),
+      version: state.version,
+    });
   } catch {
-    // 409 表示房间里还有别人，内容仍在增量里；其他失败也不打断切文档/卸载。
+    // 有其他编辑或版本发生变化时跳过收缩，保留持久化增量；不打断切文档/卸载。
   }
 }
 

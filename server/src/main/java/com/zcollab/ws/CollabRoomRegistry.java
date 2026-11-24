@@ -15,18 +15,20 @@ public class CollabRoomRegistry {
     private final ConcurrentHashMap<Long, Set<WebSocketSession>> rooms = new ConcurrentHashMap<>();
 
     public void register(Long docId, WebSocketSession session) {
-        rooms.computeIfAbsent(docId, key -> ConcurrentHashMap.newKeySet()).add(session);
+        rooms.compute(docId, (key, sessions) -> {
+            if (sessions == null) sessions = ConcurrentHashMap.newKeySet();
+            sessions.add(session);
+            return sessions;
+        });
     }
 
     public boolean unregister(Long docId, WebSocketSession session) {
-        Set<WebSocketSession> sessions = rooms.get(docId);
-        if (sessions == null || !sessions.remove(session)) {
-            return false;
-        }
-        if (sessions.isEmpty()) {
-            rooms.remove(docId, sessions);
-        }
-        return true;
+        boolean[] removed = {false};
+        rooms.computeIfPresent(docId, (key, sessions) -> {
+            removed[0] = sessions.remove(session);
+            return sessions.isEmpty() ? null : sessions;
+        });
+        return removed[0];
     }
 
     public Set<WebSocketSession> peers(Long docId, WebSocketSession self) {

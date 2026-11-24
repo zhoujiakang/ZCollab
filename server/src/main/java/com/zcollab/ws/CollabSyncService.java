@@ -116,10 +116,11 @@ public class CollabSyncService {
         switch (subtype) {
             case STEP_1 -> {
                 withDocLock(docId, () -> {
-                    byte[] snapshot = store.readSnapshot(docId);
+                    var state = store.readState(docId);
+                    byte[] snapshot = state.snapshot();
                     send(self, syncFrame(SyncMessageType.STEP_2,
                             snapshot != null ? snapshot : EMPTY_UPDATE));
-                    List<byte[]> stored = store.readUpdates(docId);
+                    List<byte[]> stored = state.updates();
                     for (byte[] known : stored) {
                         send(self, syncFrame(SyncMessageType.UPDATE, known));
                     }

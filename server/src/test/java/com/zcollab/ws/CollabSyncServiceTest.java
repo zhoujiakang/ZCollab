@@ -221,7 +221,7 @@ class CollabSyncServiceTest {
         byte[] snapshot = {9, 8, 7};
         byte[] delta1 = {1, 1};
         byte[] delta2 = {2, 2};
-        store.saveSnapshot(DOC_ID, snapshot);
+        store.saveSnapshot(DOC_ID, snapshot, store.readState(DOC_ID).version());
         store.appendUpdate(DOC_ID, delta1);
         store.appendUpdate(DOC_ID, delta2);
         FakeSession client = new FakeSession("client");

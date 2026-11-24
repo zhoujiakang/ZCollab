@@ -1,9 +1,12 @@
 package com.zcollab.ws;
 
+import com.zcollab.service.WorkspaceMemberRemoved;
+import com.zcollab.service.WorkspaceMemberService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -27,10 +30,13 @@ public class CollabWebSocketHandler extends BinaryWebSocketHandler {
 
     private final CollabRoomRegistry registry;
     private final CollabSyncService syncService;
+    private final WorkspaceMemberService members;
 
-    public CollabWebSocketHandler(CollabRoomRegistry registry, CollabSyncService syncService) {
+    public CollabWebSocketHandler(CollabRoomRegistry registry, CollabSyncService syncService,
+                                  WorkspaceMemberService members) {
         this.registry = registry;
         this.syncService = syncService;
+        this.members = members;
     }
 
     @Override
@@ -47,12 +53,15 @@ public class CollabWebSocketHandler extends BinaryWebSocketHandler {
         Long docId = (Long) attributes.get(ATTR_DOC_ID);
         attributes.put(ATTR_LAST_ACTIVE_AT, new AtomicLong(System.currentTimeMillis()));
         registry.register(docId, session);
+        // 注册之后再检查，覆盖握手通过到入房之间成员已被移除的情况。
+        if (!requireMembership(session)) return;
         log.info("文档 {} 在线 {} 人", docId, registry.size(docId));
         syncService.onClientJoin(docId, session);
     }
 
     @Override
     protected void handleBinaryMessage(WebSocketSession session, BinaryMessage message) {
+        if (!session.isOpen() || !requireMembership(session)) return;
         touch(session);
         Long docId = (Long) session.getAttributes().get(ATTR_DOC_ID);
         if (docId != null) {
@@ -65,7 +74,34 @@ public class CollabWebSocketHandler extends BinaryWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+        if (!session.isOpen() || !requireMembership(session)) return;
         touch(session);
+    }
+
+    /** AFTER_COMMIT avoids disconnecting a member when the removal transaction rolls back. */
+    @TransactionalEventListener(fallbackExecution = true)
+    public void onMemberRemoved(WorkspaceMemberRemoved event) {
+        for (Set<WebSocketSession> sessions : registry.snapshot().values()) {
+            for (WebSocketSession session : sessions) {
+                Map<String, Object> attributes = session.getAttributes();
+                if (event.workspaceId().equals(attributes.get(ATTR_WORKSPACE_ID))
+                        && Long.valueOf(event.userId()).equals(attributes.get(ATTR_USER_ID))) {
+                    close(session, CLOSE_UNAUTHORIZED, "已退出或被移出工作区");
+                    removeAndLog(session);
+                }
+            }
+        }
+    }
+
+    private boolean requireMembership(WebSocketSession session) {
+        Long workspaceId = (Long) session.getAttributes().get(ATTR_WORKSPACE_ID);
+        Long userId = (Long) session.getAttributes().get(ATTR_USER_ID);
+        if (workspaceId != null && userId != null && members.findMembership(workspaceId, userId) != null) {
+            return true;
+        }
+        close(session, CLOSE_UNAUTHORIZED, "没有工作区访问权限");
+        removeAndLog(session);
+        return false;
     }
 
     @Override

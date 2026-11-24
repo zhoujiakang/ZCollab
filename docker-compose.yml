@@ -37,6 +37,7 @@ services:
       SPRING_DATASOURCE_USERNAME: zcollab
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-zcollab}
       SPRING_DATA_REDIS_HOST: redis
+      COLLAB_ALLOWED_ORIGINS: "${COLLAB_ALLOWED_ORIGINS:-http://localhost,http://localhost:*,http://127.0.0.1,http://127.0.0.1:*}"
     volumes:
       - uploads:/data/uploads
 

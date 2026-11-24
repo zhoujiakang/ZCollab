@@ -13,6 +13,7 @@ import com.zcollab.exception.BusinessException;
 import com.zcollab.exception.ErrorCode;
 import com.zcollab.mapper.UserMapper;
 import com.zcollab.mapper.WorkspaceMemberMapper;
+import com.zcollab.service.WorkspaceMemberRemoved;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,12 +38,16 @@ class WorkspaceMemberServiceImplTest {
     }
 
     private List<LambdaUpdateWrapper<WorkspaceMember>> updates;
+    private List<Object> events;
+    private List<Long> deleted;
 
     @BeforeEach
     void setUp() {
         SaTokenContextMockUtil.setMockContext();
         StpUtil.login(USER_ID);
         updates = new ArrayList<>();
+        events = new ArrayList<>();
+        deleted = new ArrayList<>();
     }
 
     @AfterEach
@@ -88,8 +93,26 @@ class WorkspaceMemberServiceImplTest {
         assertTrue(updates.isEmpty());
     }
 
+    @Test
+    void successfulRemovalPublishesWorkspaceAndUserAfterDeletion() {
+        service().removeMember(TARGET_ID);
+        assertEquals(List.of(2L), deleted);
+        assertEquals(List.of(new WorkspaceMemberRemoved(WORKSPACE_ID, TARGET_ID)), events);
+    }
+
+    @Test
+    void rejectedRemovalDoesNotPublishDisconnectEvent() {
+        assertThrows(BusinessException.class, () -> service().removeMember(USER_ID));
+        assertTrue(deleted.isEmpty());
+        assertTrue(events.isEmpty());
+    }
+
     private WorkspaceMemberServiceImpl service() {
         WorkspaceMemberMapper mapper = proxy(WorkspaceMemberMapper.class, (p, method, args) -> {
+            if ("deleteById".equals(method.getName())) {
+                deleted.add((Long) args[0]);
+                return 1;
+            }
             if ("selectOne".equals(method.getName())) {
                 @SuppressWarnings("unchecked")
                 LambdaQueryWrapper<WorkspaceMember> wrapper = (LambdaQueryWrapper<WorkspaceMember>) args[0];
@@ -112,7 +135,10 @@ class WorkspaceMemberServiceImplTest {
         UserMapper users = proxy(UserMapper.class, (p, method, args) -> null);
         WorkspaceContext context = new WorkspaceContext();
         context.setActiveWorkspaceId(WORKSPACE_ID);
-        return new WorkspaceMemberServiceImpl(mapper, users, context);
+        return new WorkspaceMemberServiceImpl(mapper, users, context, event -> {
+            assertTrue(!deleted.isEmpty(), "Disconnect event must follow the delete");
+            events.add(event);
+        });
     }
 
     private static WorkspaceMember member(Long id, Long userId, String role) {

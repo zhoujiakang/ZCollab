@@ -1,6 +1,7 @@
 package com.zcollab.service;
 
 import com.zcollab.dto.doc.CreateDocRequest;
+import com.zcollab.core.store.DocState;
 import com.zcollab.dto.doc.ImportDocRequest;
 import com.zcollab.dto.doc.SearchDocRequest;
 import com.zcollab.dto.doc.UpdateDocRequest;
@@ -32,7 +33,9 @@ public interface DocService {
 
     void move(Long id, Long parentId, Long beforeDocId);
 
-    void compact(Long id, byte[] snapshot);
+    DocState prepareCompact(Long id);
+
+    void compact(Long id, byte[] snapshot, String version);
 
     ShareCreateResponse createShareLink(Long id);
 

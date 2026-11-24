@@ -3,6 +3,7 @@ package com.zcollab.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.zcollab.core.store.DocStore;
+import com.zcollab.core.store.DocState;
 import com.zcollab.dto.doc.CreateDocRequest;
 import com.zcollab.dto.doc.ImportDocRequest;
 import com.zcollab.dto.doc.SearchDocRequest;
@@ -117,6 +118,9 @@ public class DocServiceImpl implements DocService {
     }
 
     private Doc insertDoc(Long workspaceId, Long parentDocId, String title) {
+        if (parentDocId != null) {
+            requireDoc(parentDocId, workspaceId);
+        }
         Doc doc = new Doc();
         doc.setWorkspaceId(workspaceId);
         doc.setParentDocId(parentDocId);
@@ -233,13 +237,21 @@ public class DocServiceImpl implements DocService {
     }
 
     @Override
-    public void compact(Long id, byte[] snapshot) {
+    public DocState prepareCompact(Long id) {
         requireDoc(id, currentWorkspaceId());
-        // 两人以上时，别人的 update 可能落在快照算完之后、事务提交之前被连带删掉。
+        return docStore.readState(id);
+    }
+
+    @Override
+    public void compact(Long id, byte[] snapshot, String version) {
+        requireDoc(id, currentWorkspaceId());
+        // 多人编辑时减少无效收缩；真正的数据保护由存储层的版本检查和行锁保证。
         if (roomRegistry.size(id) > 1) {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
-        docStore.saveSnapshot(id, snapshot);
+        if (!docStore.saveSnapshot(id, snapshot, version)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "文档有新编辑，已保留增量并跳过本次收缩");
+        }
     }
 
     @Override

@@ -14,6 +14,11 @@ public interface DocStore {
     /** Append one update to the document log. */
     void appendUpdate(long docId, byte[] update);
 
-    /** Overwrite (or create) the document snapshot. */
-    void saveSnapshot(long docId, byte[] snapshot);
+    /** Implementations must read this state atomically with respect to append and compaction. */
+    default DocState readState(long docId) {
+        return new DocState(readSnapshot(docId), readUpdates(docId));
+    }
+
+    /** Replace the snapshot and remove covered updates only if the prepared state is unchanged. */
+    boolean saveSnapshot(long docId, byte[] snapshot, String expectedVersion);
 }

@@ -12,11 +12,13 @@ import com.zcollab.entity.User;
 import com.zcollab.mapper.UserMapper;
 import com.zcollab.mapper.WorkspaceMemberMapper;
 import com.zcollab.service.WorkspaceMemberService;
+import com.zcollab.service.WorkspaceMemberRemoved;
 import com.zcollab.vo.common.PageResponse;
 import com.zcollab.vo.workspace.MemberResponse;
 import com.zcollab.vo.workspace.MemberRow;
 import com.zcollab.vo.workspace.WorkspaceMembership;
 import com.zcollab.vo.workspace.WorkspaceSummaryResponse;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,13 +31,15 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService {
     private final WorkspaceMemberMapper workspaceMemberMapper;
     private final UserMapper userMapper;
     private final WorkspaceContext workspaceContext;
+    private final ApplicationEventPublisher events;
 
     public WorkspaceMemberServiceImpl(WorkspaceMemberMapper workspaceMemberMapper,
                                       UserMapper userMapper,
-                                      WorkspaceContext workspaceContext) {
+                                      WorkspaceContext workspaceContext, ApplicationEventPublisher events) {
         this.workspaceMemberMapper = workspaceMemberMapper;
         this.userMapper = userMapper;
         this.workspaceContext = workspaceContext;
+        this.events = events;
     }
 
     @Override
@@ -122,6 +126,7 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService {
     }
 
     @Override
+    @Transactional
     public void removeMember(Long userId) {
         WorkspaceMembership membership = requireCurrentMembership();
         long currentUserId = StpUtil.getLoginIdAsLong();
@@ -138,6 +143,7 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService {
         }
 
         workspaceMemberMapper.deleteById(target.getId());
+        events.publishEvent(new WorkspaceMemberRemoved(membership.workspaceId(), userId));
         if (userId == currentUserId) {
             workspaceContext.clearActiveWorkspaceId();
         }

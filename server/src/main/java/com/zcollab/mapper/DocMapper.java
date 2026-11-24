@@ -14,6 +14,9 @@ import java.util.List;
 
 public interface DocMapper extends BaseMapper<Doc> {
 
+    @Select("SELECT id FROM doc WHERE id = #{docId} FOR UPDATE")
+    Long lockDocument(@Param("docId") long docId);
+
     @Select("""
             SELECT id, parent_doc_id, title
             FROM doc

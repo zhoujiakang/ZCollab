@@ -1,6 +1,7 @@
 package com.zcollab.store;
 
 import com.zcollab.core.store.DocStore;
+import com.zcollab.core.store.DocState;
 import com.zcollab.entity.DocUpdate;
 import com.zcollab.mapper.DocMapper;
 import com.zcollab.mapper.DocUpdateMapper;
@@ -47,6 +48,7 @@ public class PgDocStore implements DocStore {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void appendUpdate(long docId, byte[] update) {
         Objects.requireNonNull(update, "update");
+        docMapper.lockDocument(docId);
         long seq = updateMapper.selectNextSeq(docId);
         DocUpdate row = new DocUpdate();
         row.setDocId(docId);
@@ -58,12 +60,22 @@ public class PgDocStore implements DocStore {
 
     @Override
     @Transactional
-    public void saveSnapshot(long docId, byte[] snapshot) {
+    public DocState readState(long docId) {
+        docMapper.lockDocument(docId);
+        return DocStore.super.readState(docId);
+    }
+
+    @Override
+    @Transactional
+    public boolean saveSnapshot(long docId, byte[] snapshot, String expectedVersion) {
         Objects.requireNonNull(snapshot, "snapshot");
-        // nextSeq - 1 == greatest(当前最大 seq, snapshot_seq)，收缩后再次收缩也不会把序号倒退。
+        // 与追加增量共用数据库行锁，版本检查到删除之间不能插入新编辑。
+        docMapper.lockDocument(docId);
+        if (!DocStore.super.readState(docId).version().equals(expectedVersion)) return false;
         long coveredSeq = updateMapper.selectNextSeq(docId) - 1;
         docMapper.updateSnapshot(docId, snapshot, coveredSeq);
         updateMapper.deleteByDocIdAndSeqLessThanEqual(docId, coveredSeq);
         log.info("文档 {} 保存快照，覆盖到 seq={}，字节数={}", docId, coveredSeq, snapshot.length);
+        return true;
     }
 }
