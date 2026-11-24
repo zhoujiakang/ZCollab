@@ -9,6 +9,7 @@
 <p align="center">
   <a href="https://docs.zzzink.cn"><strong>在线体验 ↗</strong></a> ·
   <a href="#界面预览">界面预览</a> ·
+  <a href="#在线体验">在线体验指南</a> ·
   <a href="#功能亮点">功能亮点</a> ·
   <a href="#技术实现">技术实现</a> ·
   <a href="https://github.com/zhoujiakang/ZCollab/issues">反馈与建议</a>
@@ -30,6 +31,16 @@
 
 ![ZCollab 浅色主题：页面树、富文本编辑器与文档目录](./.github/assets/editor-light.jpg)
 
+<p align="center"><sub>浅色主题 · 页面树、编辑器与目录大纲</sub></p>
+
+## 在线体验
+
+打开 **[docs.zzzink.cn](https://docs.zzzink.cn)**，可以这样开始：
+
+1. **创建自己的空间**：注册账号，给工作区起个名字。
+2. **写下第一份文档**：新建页面或选择模板，输入 `/` 插入内容，也可以导入已有的 Markdown。
+3. **试试一起写**：邀请伙伴加入工作区，打开同一份文档，查看实时光标；选中文字，就能围绕内容发起评论。
+
 ## 功能亮点
 
 ### ✍️ 多人一起写
@@ -50,15 +61,17 @@
 
 ### 协作与讨论实景
 
-深色主题下的评论面板与协作光标。截图使用同一演示账号的两个窗口，展示实时同步与选区状态。
+把讨论留在内容旁边，编辑时也能看到其他协作窗口的选区与光标。
 
 ![ZCollab 深色主题：双窗口在线状态、协作选区与文档评论](./.github/assets/collaboration-dark.jpg)
 
-<sub>以上均为线上实际界面，文档与评论是为项目展示创建的示例内容。</sub>
+<p align="center"><sub>深色主题 · 同一演示账号的双窗口协作与评论</sub></p>
+
+<sub>截图均来自线上实际界面，使用为项目展示创建的示例文档与评论。</sub>
 
 ## 技术实现
 
-这个项目的一项主要实践是：**用 Java 实现与 y-websocket 客户端对接的协作同步服务**，把实时编辑接入 Spring Boot 业务系统。
+**用 Java 对接 Yjs 协作协议**是这个项目的主要技术实践：前端使用标准 y-websocket 客户端，Spring Boot 后端处理同步消息、业务权限和文档持久化。
 
 - **同步协议**：处理 Yjs 同步握手与增量消息，按文档房间广播变更，转发光标和在线状态。
 - **持久化与恢复**：将二进制增量写入 PostgreSQL；新连接通过快照和后续增量重放恢复文档，快照收缩后清理已覆盖的增量。
@@ -87,7 +100,13 @@ flowchart TB
 | 数据存储 | PostgreSQL · Redis |
 
 <details>
-<summary>浏览源码结构</summary>
+<summary>从哪里开始读源码？</summary>
+
+- [文档编辑页面](./client/src/components/page/PageView.tsx)：编辑器、工具栏与协作能力的集成入口。
+- [前端协作连接](./client/src/collab/useCollabDoc.ts)：Y.Doc、WebSocket 连接的生命周期与离开文档时的快照提交。
+- [后端同步服务](./server/src/main/java/com/zcollab/ws/CollabSyncService.java)：同步握手、增量转发与在线状态广播。
+- [文档持久化](./server/src/main/java/com/zcollab/store/PgDocStore.java)：快照、增量读写与快照覆盖后的增量清理。
+- [协作访问校验](./server/src/main/java/com/zcollab/ws/CollabHandshakeInterceptor.java)：连接的登录态、工作区成员身份与文档归属检查。
 
 ```text
 ZCollab
